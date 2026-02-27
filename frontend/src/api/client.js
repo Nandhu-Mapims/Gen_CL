@@ -40,12 +40,9 @@ export const apiClient = {
         // Handle 401 Unauthorized - token expired or invalid
         if (res.status === 401) {
           console.error('Authentication failed:', errorData.message);
-          // Clear invalid token
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          // Only auto-redirect if not on patient report page (let it show error first)
-          // Patient report should show error message instead of immediately redirecting
-          if (window.location.pathname !== '/login' && !window.location.pathname.includes('/patient-report')) {
+          if (window.location.pathname !== '/login') {
             window.location.href = '/login';
           }
         }

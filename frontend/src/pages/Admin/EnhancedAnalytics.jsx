@@ -162,10 +162,10 @@ export function EnhancedAnalytics() {
           </div>
         </div>
 
-        {/* Total Cases */}
+        {/* Total Audit Sessions */}
         <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-maroon-500">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm font-medium text-slate-600">Total Cases</div>
+            <div className="text-sm font-medium text-slate-600">Audit Sessions</div>
             <div className={`px-3 py-1 rounded-full text-xs font-bold ${
               (summary?.submissionTrend || 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}>
@@ -400,7 +400,7 @@ export function EnhancedAnalytics() {
                     <span className="font-bold text-red-600">{dept.openIssues}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Total Cases:</span>
+                    <span className="text-slate-600">Total Sessions:</span>
                     <span className="font-semibold">{dept.totalCases}</span>
                   </div>
                 </div>

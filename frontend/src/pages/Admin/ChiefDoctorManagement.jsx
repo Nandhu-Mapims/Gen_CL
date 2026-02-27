@@ -9,7 +9,7 @@ export function ChiefDoctorManagement() {
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
-    designation: 'Unit Chief',
+    designation: 'Unit Supervisor',
     departmentId: '',
     isActive: true,
     order: 0,
@@ -47,7 +47,7 @@ export function ChiefDoctorManagement() {
     try {
       const payload = {
         name: formData.name.trim(),
-        designation: formData.designation.trim() || 'Unit Chief',
+        designation: formData.designation.trim() || 'Unit Supervisor',
         departmentId: formData.departmentId || null,
         isActive: formData.isActive,
         order: parseInt(formData.order) || 0,
@@ -55,13 +55,13 @@ export function ChiefDoctorManagement() {
 
       if (editingId) {
         await apiClient.put(`/chief-doctors/${editingId}`, payload)
-        alert('Chief doctor updated successfully')
+        alert('Unit supervisor updated successfully')
       } else {
         await apiClient.post('/chief-doctors', payload)
-        alert('Chief doctor created successfully')
+        alert('Unit supervisor created successfully')
       }
 
-      setFormData({ name: '', designation: 'Unit Chief', departmentId: '', isActive: true, order: 0 })
+      setFormData({ name: '', designation: 'Unit Supervisor', departmentId: '', isActive: true, order: 0 })
       setEditingId(null)
       loadData()
     } catch (err) {
@@ -72,7 +72,7 @@ export function ChiefDoctorManagement() {
   const handleEdit = (chief) => {
     setFormData({
       name: chief.name,
-      designation: chief.designation || 'Unit Chief',
+      designation: chief.designation || 'Unit Supervisor',
       departmentId: chief.department?._id || '',
       isActive: chief.isActive,
       order: chief.order || 0,
@@ -81,11 +81,11 @@ export function ChiefDoctorManagement() {
   }
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Delete chief doctor "${name}"?`)) return
+    if (!confirm(`Delete unit supervisor "${name}"?`)) return
 
     try {
       await apiClient.delete(`/chief-doctors/${id}`)
-      alert('Chief doctor deleted successfully')
+      alert('Unit supervisor deleted successfully')
       loadData()
     } catch (err) {
       alert('Error deleting: ' + (err.response?.data?.message || err.message))
@@ -93,7 +93,7 @@ export function ChiefDoctorManagement() {
   }
 
   const handleCancel = () => {
-    setFormData({ name: '', designation: 'Unit Chief', departmentId: '', isActive: true, order: 0 })
+    setFormData({ name: '', designation: 'Unit Supervisor', departmentId: '', isActive: true, order: 0 })
     setEditingId(null)
   }
 
@@ -101,14 +101,14 @@ export function ChiefDoctorManagement() {
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-4 sm:py-5">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Unit Chief Management</h1>
-        <p className="mt-1 text-sm text-slate-600">Manage the list of unit chief doctors for dropdown selection</p>
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Unit Supervisor Management</h1>
+        <p className="mt-1 text-sm text-slate-600">Manage unit supervisors — they appear as dropdown options when staff submit audit checklists</p>
       </div>
 
       {/* Form */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">
-          {editingId ? 'Edit Chief Doctor' : 'Add New Chief Doctor'}
+          {editingId ? 'Edit Unit Supervisor' : 'Add New Unit Supervisor'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -121,7 +121,7 @@ export function ChiefDoctorManagement() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
-                placeholder="Dr. John Doe"
+                placeholder="e.g. Jane Smith, John Doe"
                 required
               />
             </div>
@@ -183,7 +183,7 @@ export function ChiefDoctorManagement() {
               type="submit"
               className="bg-gradient-to-r from-maroon-600 to-maroon-600 hover:from-maroon-700 hover:to-maroon-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
             >
-              {editingId ? 'Update' : 'Add'} Chief Doctor
+              {editingId ? 'Update' : 'Add'} Unit Supervisor
             </button>
             {editingId && (
               <button
@@ -202,14 +202,14 @@ export function ChiefDoctorManagement() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-4 bg-slate-50 border-b border-slate-200">
           <h3 className="text-lg font-semibold text-slate-800">
-            Chief Doctors List ({chiefDoctors.length})
+            Unit Supervisors List ({chiefDoctors.length})
           </h3>
         </div>
         {loading ? (
           <div className="p-8 text-center text-slate-600">Loading...</div>
         ) : chiefDoctors.length === 0 ? (
           <div className="p-8 text-center text-slate-600">
-            No chief doctors added yet. Add one using the form above.
+            No unit supervisors added yet. Add one using the form above.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -231,7 +231,7 @@ export function ChiefDoctorManagement() {
                     <td className="p-3 text-slate-500 font-medium text-sm">{idx + 1}</td>
                     <td className="p-3 text-sm text-slate-600">{chief.order}</td>
                     <td className="p-3 text-sm font-medium text-slate-800">{chief.name}</td>
-                    <td className="p-3 text-sm text-slate-600">{chief.designation || 'Unit Chief'}</td>
+                    <td className="p-3 text-sm text-slate-600">{chief.designation || 'Unit Supervisor'}</td>
                     <td className="p-3 text-sm text-slate-600">
                       {chief.department ? `${chief.department.name} (${chief.department.code})` : 'All Departments'}
                     </td>

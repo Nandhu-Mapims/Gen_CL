@@ -297,7 +297,7 @@ export function Layout({ children }) {
   const isActive = (path) => location.pathname === path
   
   const isConfigActive = () => {
-    return isActive('/admin/departments') || isActive('/admin/users') || isActive('/admin/assign-forms') || isActive('/admin/ward-list') || isActive('/admin/unit-list') || isActive('/admin/master-data')
+    return isActive('/admin/departments') || isActive('/admin/users') || isActive('/admin/assign-forms') || isActive('/admin/ward-list') || isActive('/admin/unit-list') || isActive('/admin/master-data') || isActive('/admin/locations')
   }
 
   const isCreateFormsActive = () => {
@@ -314,6 +314,7 @@ export function Layout({ children }) {
         try {
           const accessibleForms = await apiClient.get('/form-templates/accessible/list')
           setUserForms(accessibleForms)
+          if (accessibleForms.length > 1) setFormsMenuOpen(true)
         } catch (err) {
           console.error('Error loading user forms:', err)
           setUserForms([])
@@ -354,12 +355,12 @@ export function Layout({ children }) {
                   className="max-h-full max-w-full w-auto object-contain animate-logo-fade-in animate-logo-breathe animate-logo-glow group-hover:scale-105 transition-transform  origin-center"
                 />
               </span>
-              <div className="hidden sm:block min-w-0">
+                <div className="hidden sm:block min-w-0">
                 <h1 className="text-base sm:text-lg font-semibold text-slate-900 truncate">
-                  Operations Checklist
+                  Quality Audit Checklist
                 </h1>
                 <p className="text-xs text-slate-500">
-                  General Operations
+                  Hospital Quality Control
                 </p>
               </div>
             </Link>
@@ -454,10 +455,10 @@ export function Layout({ children }) {
                             isActive={isActive('/admin/chief-analytics')}
                           />
                           <SidebarMenuItem
-                            to="/admin/patient-report"
+                            to="/admin/submissions-report"
                             icon="📋"
                             label="Submissions Report"
-                            isActive={isActive('/admin/patient-report')}
+                            isActive={isActive('/admin/submissions-report')}
                           />
                           <SidebarMenuItem
                             to="/admin/department-logs"
@@ -523,6 +524,12 @@ export function Layout({ children }) {
                               isActive={isActive('/admin/assign-forms')}
                             />
                             <SubMenuItem
+                              to="/admin/locations"
+                              icon="📍"
+                              label="Locations"
+                              isActive={isActive('/admin/locations')}
+                            />
+                            <SubMenuItem
                               to="/admin/master-data"
                               icon="📌"
                               label="Designations"
@@ -554,7 +561,7 @@ export function Layout({ children }) {
                         {user.role === 'STAFF' && (
                           <div className="mb-4">
                             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 mb-2">My dashboard</div>
-                            <SidebarMenuItem to="/auditor/dashboard" icon="👨‍⚕️" label="My Dashboard" isActive={isActive('/auditor/dashboard')} accentColor="green" />
+                            <SidebarMenuItem to="/auditor/dashboard" icon="🗂️" label="My Dashboard" isActive={isActive('/auditor/dashboard')} accentColor="green" />
                             <SidebarMenuItem to="/auditor/analytics" icon="📊" label="My Analytics" isActive={isActive('/auditor/analytics')} accentColor="green" />
                           </div>
                         )}
@@ -573,16 +580,13 @@ export function Layout({ children }) {
                             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 mb-2">
                               Submit forms
                             </div>
-                            {userForms.length <= 3 ? (
-                              userForms.map((form) => (
-                                <SidebarMenuItem
-                                  key={form._id}
-                                  to={`/form/${form._id}`}
-                                  icon="📝"
-                                  label={form.name}
-                                  isActive={location.pathname === `/form/${form._id}`}
-                                />
-                              ))
+                            {userForms.length === 1 ? (
+                              <SidebarMenuItem
+                                to={`/form/${userForms[0]._id}`}
+                                icon="📝"
+                                label={userForms[0].name}
+                                isActive={location.pathname === `/form/${userForms[0]._id}`}
+                              />
                             ) : (
                               <SidebarSection
                                 icon="📝"
@@ -611,10 +615,10 @@ export function Layout({ children }) {
                               Reports
                             </div>
                           <SidebarMenuItem
-                            to="/admin/patient-report"
+                            to="/admin/submissions-report"
                             icon="📋"
                             label="Submissions Report"
-                            isActive={isActive('/admin/patient-report')}
+                            isActive={isActive('/admin/submissions-report')}
                           />
                           <SidebarMenuItem
                             to="/admin/department-logs"
@@ -653,14 +657,14 @@ export function Layout({ children }) {
                     <div className="mb-6">
                       <img
                         src="/Logo-Checklist.png"
-                        alt="Hospital Audit System"
+                        alt="Quality Audit System"
                         className="h-28 sm:h-36 w-auto object-contain mb-3 animate-logo-fade-in animate-logo-breathe animate-logo-glow"
                       />
                       <h2 className="text-xl font-semibold text-slate-900">
-                        Hospital Audit System
+                        Quality Audit System
                       </h2>
                       <p className="text-sm text-slate-500 mt-1">
-                        Secure login for Admin, Chief/HOD and Auditors.
+                        Secure login for Admin, Supervisor and Staff Auditors.
                       </p>
                     </div>
 
@@ -669,15 +673,15 @@ export function Layout({ children }) {
                         Quick steps:
                       </div>
                       <ul className="space-y-1 list-disc list-inside">
-                        <li>Enter your hospital username and password.</li>
+                        <li>Enter your email and password to login.</li>
                         <li>Role-based dashboard will open after login.</li>
-                        <li>Use the sidebar to navigate forms and reports.</li>
+                        <li>Use the sidebar to navigate checklists and reports.</li>
                       </ul>
                     </div>
                   </div>
 
                   <div className="mt-8 text-xs text-slate-400">
-                    Need help? Contact your MRD Admin.
+                    Need help? Contact your Quality Administrator.
                   </div>
                 </div>
               )}
@@ -685,7 +689,7 @@ export function Layout({ children }) {
               {/* Footer */}
               <div className="p-4 border-t border-maroon-200 bg-gradient-to-r from-maroon-50/50 to-maroon-50/50">
                 <div className="text-xs text-maroon-600 text-center font-medium">
-                  Hospital Audit System v1.0
+                  Quality Audit System v1.0
                 </div>
               </div>
             </div>

@@ -20,6 +20,7 @@ import { ChiefAnalytics as AdminChiefAnalytics } from './pages/Admin/ChiefAnalyt
 import { PatientReport } from './pages/Admin/PatientReport'
 import { DepartmentLogs } from './pages/Admin/DepartmentLogs'
 import { MasterDataManagement } from './pages/Admin/MasterDataManagement'
+import { LocationManagement } from './pages/Admin/LocationManagement'
 import { WardListManagement } from './pages/Admin/WardListManagement'
 import { UnitListManagement } from './pages/Admin/UnitListManagement'
 import { Form } from './pages/User/Form'
@@ -52,8 +53,10 @@ function App() {
           <Route path="/admin/analytics" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA']}><Analytics /></ProtectedRoute>} />
           <Route path="/admin/chief-analytics" element={<ProtectedRoute roles={['SUPER_ADMIN']}><AdminChiefAnalytics /></ProtectedRoute>} />
 
-          <Route path="/admin/patient-report" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']}><PatientReport /></ProtectedRoute>} />
+          <Route path="/admin/submissions-report" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']}><PatientReport /></ProtectedRoute>} />
+          <Route path="/admin/patient-report" element={<Navigate to="/admin/submissions-report" replace />} />
           <Route path="/admin/department-logs" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']}><DepartmentLogs /></ProtectedRoute>} />
+          <Route path="/admin/locations" element={<ProtectedRoute roles={['SUPER_ADMIN']}><LocationManagement /></ProtectedRoute>} />
           <Route path="/admin/master-data" element={<ProtectedRoute roles={['SUPER_ADMIN']}><MasterDataManagement /></ProtectedRoute>} />
           <Route path="/admin/ward-list" element={<ProtectedRoute roles={['SUPER_ADMIN']}><WardListManagement /></ProtectedRoute>} />
           <Route path="/admin/unit-list" element={<ProtectedRoute roles={['SUPER_ADMIN']}><UnitListManagement /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '../../api/client'
 
-const isAssignable = (u) => u.role === 'auditor' || u.role === 'chief'
+const isAssignable = (u) => ['STAFF', 'SUPERVISOR', 'DEPT_ADMIN', 'QA'].includes(u.role)
 
 const userInFormDepartment = (user, form) => {
   if (!form?.departments?.length) return false
@@ -24,7 +24,7 @@ const userMatchesSearch = (user, q) => {
 }
 
 // Group users by designation, then by department (for checklist assigning)
-const DESIGNATION_ORDER = ['Doctor', 'Chief', 'MRD Staff', 'Lab Technician', 'Nurse', 'Pharmacist', 'Other']
+const DESIGNATION_ORDER = ['Quality Auditor', 'Staff Auditor', 'Unit Supervisor', 'Department Head', 'Quality Officer', 'Infection Control Officer', 'Nursing In-charge', 'Other']
 const groupByDesignationAndDepartment = (users) => {
   const map = {}
   for (const user of users) {
@@ -246,7 +246,7 @@ export function FormUserAssignment() {
 
                 {assignableUsers.length === 0 ? (
                   <div className="text-center py-8 text-slate-600">
-                    No users found. Create auditor or chief users first.
+                    No users found. Create staff or supervisor users first.
                   </div>
                 ) : (
                   <div className="space-y-4 max-h-[420px] overflow-y-auto">
@@ -269,7 +269,7 @@ export function FormUserAssignment() {
                       </div>
                       {otherUsers.length === 0 ? (
                         <p className="text-xs text-slate-500 px-2 py-2">
-                          {searchQuery ? 'No users from other departments match your search.' : 'No users from other departments. Add auditors/chiefs in other departments to assign.'}
+                          {searchQuery ? 'No users from other departments match your search.' : 'No users from other departments available to assign.'}
                         </p>
                       ) : (
                         <div className="space-y-4">

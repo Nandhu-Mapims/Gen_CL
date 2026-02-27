@@ -10,7 +10,7 @@ const chiefDoctorSchema = new mongoose.Schema(
     designation: {
       type: String,
       trim: true,
-      default: 'Unit Chief',
+      default: 'Unit Supervisor',
     },
     department: {
       type: mongoose.Schema.Types.ObjectId,

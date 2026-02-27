@@ -116,7 +116,7 @@ export function MasterDataManagement() {
           Designations
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1">
-          Manage designations for users and unit chiefs. Used in dropdowns in User Management and Chief Doctor Management.
+          Manage designations for users and unit supervisors. Used in dropdowns in User Management and Unit Supervisor Management.
         </p>
       </div>
 

@@ -3,6 +3,145 @@ const Patient = require('../models/Patient');
 const Admission = require('../models/Admission');
 const Notification = require('../models/Notification');
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW: Get audit sessions for this supervisor (grouped by submittedBy + date + dept + form)
+// Shows all submissions in the supervisor's department(s) — no unitChief field needed.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getSupervisorSessions = async (req, res) => {
+  try {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const User = require('../models/User');
+    const currentUser = await User.findById(userId).lean();
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Build department filter — SUPER_ADMIN sees all, others see their own department
+    const deptFilter = {};
+    if (currentUser.role !== 'SUPER_ADMIN' && currentUser.department) {
+      deptFilter.department = currentUser.department;
+    }
+
+    const submissions = await AuditSubmission.find(deptFilter)
+      .populate('submittedBy', 'name email designation')
+      .populate('department', 'name code')
+      .populate('formTemplate', 'name')
+      .populate('checklistItemId', 'label section order responseType')
+      .populate('locationId', 'areaName zone floor building locationType')
+      .populate('shiftId', 'name startTime endTime')
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    // Group by: submittedBy + date (YYYY-MM-DD) + formTemplate + department
+    const sessionsMap = {};
+
+    submissions.forEach((sub) => {
+      const submittedById = sub.submittedBy?._id?.toString() || 'unknown';
+      const deptId = sub.department?._id?.toString() || 'unknown';
+      const formId = sub.formTemplate?._id?.toString() || 'unknown';
+      const dateStr = sub.auditDate
+        ? new Date(sub.auditDate).toISOString().slice(0, 10)
+        : sub.submittedAt
+        ? new Date(sub.submittedAt).toISOString().slice(0, 10)
+        : 'unknown';
+      const timeStr = sub.auditTime || (sub.submittedAt ? new Date(sub.submittedAt).toISOString().slice(11, 16) : '');
+
+      const key = `${submittedById}|${dateStr}|${formId}|${deptId}`;
+
+      if (!sessionsMap[key]) {
+        const locLabel = sub.locationId
+          ? [sub.locationId.zone, sub.locationId.floor, sub.locationId.areaName].filter(Boolean).join(' / ')
+          : sub.location || '';
+        const shiftLabel = sub.shiftId
+          ? (sub.shiftId.name || '')
+          : sub.shift || '';
+
+        sessionsMap[key] = {
+          sessionKey: key,
+          submittedBy: sub.submittedBy,
+          department: sub.department,
+          formTemplate: sub.formTemplate,
+          date: dateStr,
+          time: timeStr,
+          location: locLabel,
+          shift: shiftLabel,
+          submittedAt: sub.submittedAt,
+          totalItems: 0,
+          yesCount: 0,
+          noCount: 0,
+          naCount: 0,
+          withActions: 0,
+          submissions: [],
+        };
+      }
+
+      const session = sessionsMap[key];
+      session.totalItems++;
+      const val = (sub.responseValue || sub.yesNoNa || '').toString().trim().toUpperCase();
+      if (val === 'YES') session.yesCount++;
+      else if (val === 'NO') session.noCount++;
+      else if (val === 'N/A' || val === 'NA') session.naCount++;
+      if (sub.corrective || sub.preventive) session.withActions++;
+      if (sub.submittedAt > session.submittedAt) session.submittedAt = sub.submittedAt;
+      session.submissions.push(sub);
+    });
+
+    const sessions = Object.values(sessionsMap)
+      .map((s) => ({
+        ...s,
+        complianceRate: s.totalItems > 0
+          ? Math.round(((s.yesCount + s.naCount) / s.totalItems) * 100)
+          : 0,
+        pendingActions: s.noCount - s.withActions > 0 ? s.noCount - s.withActions : 0,
+      }))
+      .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+    res.json(sessions);
+  } catch (err) {
+    console.error('getSupervisorSessions error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get all submissions for a specific session key (for the corrective/preventive modal)
+exports.getSessionSubmissions = async (req, res) => {
+  try {
+    const { submittedById, date, formTemplateId, departmentId } = req.query;
+
+    if (!submittedById || !date || !formTemplateId || !departmentId) {
+      return res.status(400).json({ message: 'submittedById, date, formTemplateId and departmentId are required' });
+    }
+
+    const dayStart = new Date(date + 'T00:00:00.000Z');
+    const dayEnd = new Date(date + 'T23:59:59.999Z');
+
+    const submissions = await AuditSubmission.find({
+      submittedBy: submittedById,
+      formTemplate: formTemplateId,
+      department: departmentId,
+      submittedAt: { $gte: dayStart, $lte: dayEnd },
+    })
+      .populate('checklistItemId', 'label section order responseType isMandatory')
+      .populate('submittedBy', 'name email designation')
+      .populate('department', 'name code')
+      .populate('formTemplate', 'name')
+      .populate('correctivePreventiveBy', 'name email')
+      .populate('locationId', 'areaName zone floor')
+      .populate('shiftId', 'name')
+      .sort({ 'checklistItemId.section': 1, 'checklistItemId.order': 1 })
+      .lean();
+
+    res.json(submissions);
+  } catch (err) {
+    console.error('getSessionSubmissions error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get all patients (IPIDs) assigned to this chief
 exports.getChiefPatients = async (req, res) => {
   try {

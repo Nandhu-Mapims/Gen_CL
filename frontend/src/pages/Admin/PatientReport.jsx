@@ -20,7 +20,6 @@ export function PatientReport() {
   const [reportData, setReportData] = useState(null)
   const [error, setError] = useState('')
   const [location, setLocation] = useState('')
-  const [asset, setAsset] = useState('')
   const [shift, setShift] = useState('')
   const [selectedSessionId, setSelectedSessionId] = useState(null)
 
@@ -41,8 +40,8 @@ export function PatientReport() {
     if (!submissions || submissions.length === 0) return null
     const deptMap = new Map()
     const first = submissions[0]
-    const desc = [first?.location, first?.asset, first?.shift].filter(Boolean).join(' / ') || 'General'
-    const context = { location: first?.location || '', asset: first?.asset || '', shift: first?.shift || '', label: desc }
+    const desc = [first?.location, first?.shift].filter(Boolean).join(' / ') || 'General'
+    const context = { location: first?.location || '', shift: first?.shift || '', label: desc }
     submissions.forEach(sub => {
       const deptId = sub.department?._id || sub.department
       const deptName = sub.department?.name || 'Unknown Department'
@@ -149,7 +148,7 @@ export function PatientReport() {
             submittedAt: subAt,
             formName: s.formTemplate?.name || s.formTemplate || 'Unknown',
             submittedBy: s.submittedBy?.name || s.submittedBy?.email || 'Unknown',
-            description: [s.location, s.asset, s.shift].filter(Boolean).join(' / ') || 'General',
+            description: [s.location, s.shift].filter(Boolean).join(' / ') || 'General',
             submissions: [],
             yesCount: 0,
             totalCount: 0,
@@ -192,7 +191,6 @@ export function PatientReport() {
       const first = submissions?.[0]
       if (first) {
         setLocation(first.location || '')
-        setAsset(first.asset || '')
         setShift(first.shift || '')
       }
     } catch (err) {
@@ -256,10 +254,8 @@ export function PatientReport() {
     doc.text('LOCATION:', 120, yPos)
     doc.text(location || '___________', 145, yPos)
     yPos += 5
-    doc.text('ASSET:', 20, yPos)
-    doc.text(asset || '___________', 38, yPos)
-    doc.text('SHIFT:', 90, yPos)
-    doc.text(shift || '____', 110, yPos)
+    doc.text('SHIFT:', 20, yPos)
+    doc.text(shift || '____', 40, yPos)
 
     yPos = 40
 
@@ -608,11 +604,19 @@ export function PatientReport() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden no-print">
           <div className="bg-white border-b border-slate-200 px-6 py-5">
             <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 mb-1">
-              Submissions Report
+              Audit Submissions Report
             </h1>
             <p className="text-sm sm:text-base text-slate-600">
-              View and export checklist submissions by department and date
+              View, filter, and export checklist audit submissions by department and date
             </p>
+          </div>
+
+          {/* Intro hint */}
+          <div className="px-6 pt-4 pb-0">
+            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <span className="text-base flex-shrink-0">ℹ️</span>
+              <span>Select a department and click <strong>Load</strong> to view audit submissions. You can also filter by date range, location, or shift.</span>
+            </div>
           </div>
 
           {/* Filters */}
@@ -660,7 +664,7 @@ export function PatientReport() {
                   >
                     <option value="">All locations</option>
                     {locationsList.map((loc) => (
-                      <option key={loc._id} value={loc._id}>{loc.name}</option>
+                      <option key={loc._id} value={loc._id}>{loc.areaName || loc.name}</option>
                     ))}
                   </select>
                 </div>
@@ -924,8 +928,8 @@ export function PatientReport() {
                 </h1>
               </div>
 
-              {/* Submitted by, Location, Asset, Shift */}
-              <div className="mb-4 print:mb-3 text-xs print:text-[10px] grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Submitted by, Location, Shift */}
+              <div className="mb-4 print:mb-3 text-xs print:text-[10px] grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <span className="font-semibold">SUBMITTED BY:</span>{' '}
                   <span className="border-b border-slate-400 inline-block min-w-[150px]">
@@ -936,12 +940,6 @@ export function PatientReport() {
                   <span className="font-semibold">LOCATION:</span>{' '}
                   <span className="border-b border-slate-400 inline-block min-w-[120px]">
                     {location || reportData?.context?.location || '___________'}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-semibold">ASSET:</span>{' '}
-                  <span className="border-b border-slate-400 inline-block min-w-[80px]">
-                    {asset || reportData?.context?.asset || '___________'}
                   </span>
                 </div>
                 <div>

@@ -21,99 +21,98 @@ export function UserManual() {
       icon: '👥',
       content: [
         { type: 'roles', value: [
-          { role: 'Admin', color: 'blue', desc: 'Full system access. Manage users, departments, forms.' },
-          { role: 'Auditor', color: 'green', desc: 'Submit checklists. View reports and department logs.' },
-          { role: 'Chief/HOD', color: 'purple', desc: 'Review submissions. Add corrective & preventive actions.' }
+          { role: 'Super Admin', color: 'blue', desc: 'Full system access. Manage users, departments, locations, forms and view all analytics.' },
+          { role: 'Staff (Auditor)', color: 'green', desc: 'Submit quality checklists. View own submissions and reports.' },
+          { role: 'Supervisor / Dept Admin', color: 'purple', desc: 'Review submissions. Add corrective & preventive actions. View department analytics.' },
+          { role: 'QA', color: 'orange', desc: 'View analytics and reports across departments.' }
         ]}
       ],
-      keywords: ['role', 'admin', 'auditor', 'chief', 'hod', 'permission', 'access']
+      keywords: ['role', 'admin', 'staff', 'auditor', 'supervisor', 'qa', 'permission', 'access']
     },
     {
       id: 'submit-checklist',
-      title: 'Submit Checklist (Auditor)',
+      title: 'Submit Checklist (Staff / Auditor)',
       icon: '📝',
       content: [
         { type: 'steps', value: [
-          'Click form name in navigation (e.g., "Audit Checklist")',
-          'Enter UHID (from OP Card) and IPID (Admission ID)',
-          'Enter Patient Name, Ward, Unit No',
-          'Select Unit Chief from dropdown',
-          'Answer YES or NO for each item',
-          'Add remarks if NO is selected (mandatory)',
+          'Click the form name in the sidebar navigation (e.g., "Daily Quality Checklist")',
+          'Select Department / Service from the dropdown',
+          'Select Location (Zone A, Floor 1, Ward, etc.) from the dropdown',
+          'Select Shift (Morning, Afternoon, Night)',
+          'Answer YES or NO for each checklist item',
+          'Add remarks if NO is selected (strongly recommended)',
           'Click "Submit Checklist"'
         ]},
-        { type: 'tip', value: 'Audit date and time are set automatically by the system when you submit. Uniqueness is UHID + IPID + Department + Date + Time.' },
-        { type: 'warning', value: 'One submission per UHID + IPID + Department + Date + Time. Submissions are locked after submit (cannot edit).' }
+        { type: 'tip', value: 'Audit date and time are set automatically by the system at the moment you submit.' },
+        { type: 'warning', value: 'Submissions are locked after submit (cannot edit). Contact admin if a correction is needed.' }
       ],
-      keywords: ['submit', 'checklist', 'form', 'uhid', 'ipid', 'patient', 'ward', 'unit', 'yes', 'no', 'remarks', 'auditor']
+      keywords: ['submit', 'checklist', 'form', 'location', 'zone', 'floor', 'shift', 'yes', 'no', 'remarks', 'auditor', 'staff', 'department']
     },
     {
-      id: 'chief-review',
-      title: 'Review & Add Actions (Chief)',
+      id: 'supervisor-review',
+      title: 'Review & Add Actions (Supervisor)',
       icon: '👔',
       content: [
         { type: 'steps', value: [
-          'Open "Chief Dashboard" from navigation',
-          'Click on a patient to expand submissions',
+          'Open "Supervisor Dashboard" from navigation',
+          'Browse recent submissions by department and date',
           'View checklist responses (read-only)',
           'Enter Corrective Action in the text field',
           'Enter Preventive Action in the text field',
           'Click "Save" for that row',
-          'Auditor receives notification automatically'
+          'Staff member receives notification automatically'
         ]},
-        { type: 'tip', value: 'Use "Apply to All" to set same actions for all submissions of a patient.' }
+        { type: 'tip', value: 'Use "Apply to All" to set the same corrective/preventive action for multiple submissions at once.' }
       ],
-      keywords: ['chief', 'hod', 'review', 'corrective', 'preventive', 'action', 'dashboard']
+      keywords: ['supervisor', 'hod', 'review', 'corrective', 'preventive', 'action', 'dashboard']
     },
     {
-      id: 'patient-report',
-      title: 'Patient Report',
+      id: 'submissions-report',
+      title: 'Submissions Report',
       icon: '📋',
       content: [
         { type: 'steps', value: [
-          'Click "Patient Report" in navigation',
-          'Enter UHID and click "Search"',
-          'Select one audit from the list – each row shows Date, Time, and IPID (grouped by audit session)',
+          'Click "Submissions Report" in navigation',
+          'Filter by department, location, shift, or date range',
+          'Browse and select any submission row to view details',
           'View the complete audit report for that session',
-          'Use "Export to PDF" or "Print" as needed',
-          'Use "Back to List" to choose another audit for the same UHID'
+          'Use "Export to PDF" or "Print" as needed'
         ]},
-        { type: 'text', value: 'Results are grouped by Date + Time + IPID, so you can open a specific audit session (e.g. morning vs afternoon audit for the same admission).' },
         { type: 'table', value: {
           headers: ['Column', 'Description'],
           rows: [
-            ['Checklist Item', 'The audit question'],
-            ['YES / NO', 'Auditor response'],
+            ['Checklist Item', 'The quality audit question'],
+            ['YES / NO', 'Staff response'],
             ['Remarks', 'Comments (if NO)'],
-            ['Corrective Action', 'Added by Chief'],
-            ['Preventive Action', 'Added by Chief']
+            ['Corrective Action', 'Added by Supervisor'],
+            ['Preventive Action', 'Added by Supervisor']
           ]
         }}
       ],
-      keywords: ['report', 'patient', 'uhid', 'ipid', 'date', 'time', 'print', 'pdf', 'export']
+      keywords: ['report', 'submissions', 'date', 'time', 'print', 'pdf', 'export', 'filter']
     },
     {
       id: 'department-logs',
       title: 'Department Logs',
       icon: '📊',
       content: [
-        { type: 'text', value: 'View all audit submissions for your department. When you open a patient by UHID, audits are grouped by Date + Time + IPID.' },
+        { type: 'text', value: 'View all audit submissions for your department. Filter by date, location, or shift to narrow down results.' },
         { type: 'steps', value: [
           'Click "Department Logs" in navigation',
-          'Expand a department and click a UHID (e.g. "UHID: 12345") to open the preview modal',
-          'Select one audit from the list – each row shows Date, Time, and IPID for that audit session',
-          'View checklist responses, remarks, and corrective/preventive actions for that session',
-          'Use "Back to List" to pick another audit, or "Close" to exit'
+          'Use filters (department, date, location, shift) to find submissions',
+          'Click on any submission row to open the preview modal',
+          'View checklist responses, remarks, and corrective/preventive actions',
+          'Use "Close" to exit the preview'
         ]}
       ],
-      keywords: ['department', 'logs', 'view', 'submissions', 'filter', 'preview', 'uhid', 'date', 'time', 'ipid']
+      keywords: ['department', 'logs', 'view', 'submissions', 'filter', 'preview', 'location', 'zone', 'date', 'shift']
     },
     {
       id: 'notifications',
       title: 'Notifications',
       icon: '🔔',
       content: [
-        { type: 'text', value: 'Auditors receive notifications when Chiefs add actions to their submissions.' },
+        { type: 'text', value: 'Staff receive notifications when Supervisors add corrective/preventive actions to their submissions.' },
         { type: 'steps', value: [
           'Bell icon shows unread count',
           'Click bell to view notifications',
@@ -145,9 +144,9 @@ export function UserManual() {
         { type: 'text', value: 'Navigate to: Configure → Users' },
         { type: 'list', value: [
           'Create users with name, email, password',
-          'Assign role: Admin, Auditor, or Chief',
-          'Assign to department',
-          'Reset passwords or deactivate'
+          'Assign role: Super Admin, Staff, Supervisor, Dept Admin, or QA',
+          'Assign user to a department',
+          'Reset passwords or deactivate users'
         ]}
       ],
       keywords: ['admin', 'user', 'create', 'password', 'role', 'manage']
@@ -189,31 +188,35 @@ export function UserManual() {
     },
     {
       id: 'audit-flow',
-      title: 'Audit Flow Overview',
+      title: 'Quality Audit Flow Overview',
       icon: '🔄',
       content: [
-        { type: 'text', value: 'End-to-end flow: submit checklist → system sets date/time automatically and enforces one submission per UHID + IPID + Department + Date + Time → reports and logs show audits grouped by Date + Time + IPID.' },
+        { type: 'text', value: 'End-to-end quality audit flow: staff submits checklist → system records date/time → supervisor reviews and adds corrective/preventive actions → reports and logs track compliance over time.' },
         { type: 'steps', value: [
-          'Submit: Auditor fills form and submits; system records date and time automatically.',
-          'Uniqueness: Same UHID + IPID + Department + same Date + same Time = one submission. Submit at a different time to add another audit for the same admission.',
-          'Patient Report: Enter UHID → list shows one row per audit (Date, Time, IPID) → select one to view that audit’s report.',
-          'Department Logs: Click UHID in logs → list shows audits by Date, Time, IPID → select one to view that audit’s checklist.'
+          'Admin sets up: creates departments, locations (zones/floors), shifts, form templates, and checklist items.',
+          'Admin assigns: assigns forms to departments and users.',
+          'Staff submits: selects department, location, shift → answers checklist → submits. System records date and time automatically.',
+          'Supervisor reviews: opens Supervisor Dashboard → views submissions → adds corrective/preventive actions → staff is notified.',
+          'Reports: Admin/Supervisor views analytics by department, location, shift, or date range.'
         ]}
       ],
-      keywords: ['flow', 'audit', 'submit', 'report', 'logs', 'date', 'time', 'uhid', 'ipid']
+      keywords: ['flow', 'quality', 'audit', 'submit', 'report', 'logs', 'date', 'time', 'location', 'zone']
     },
     {
-      id: 'uhid-ipid',
-      title: 'UHID vs IPID',
-      icon: '🆔',
+      id: 'locations',
+      title: 'Locations (Zones, Floors, Wards)',
+      icon: '📍',
       content: [
+        { type: 'text', value: 'Locations represent the physical area where an audit is carried out. Admin can create any type: Zone A, Zone B, Zone C, Ground Floor, 1st Floor, ICU Ward, OT, etc.' },
         { type: 'definition', value: [
-          { term: 'UHID', desc: 'Unique Hospital ID - Permanent patient identifier (e.g., UHID000001)' },
-          { term: 'IPID', desc: 'In-Patient ID - Unique per admission (e.g., IPID000001)' }
+          { term: 'Zone', desc: 'A named area zone (e.g. Zone A, Zone B, Zone C)' },
+          { term: 'Floor', desc: 'A building floor (e.g. Ground Floor, 1st Floor)' },
+          { term: 'Ward', desc: 'A hospital ward (e.g. ICU Ward, General Ward)' },
+          { term: 'Room / Unit', desc: 'A specific room, bay, or unit within a floor' }
         ]},
-        { type: 'text', value: 'A patient can have multiple IPIDs if admitted multiple times. For the same admission (IPID), you can submit multiple audit checklists; the system records date and time automatically. Each submission is identified by UHID + IPID + Department + Date + Time.' }
+        { type: 'tip', value: 'Admin creates locations via Configure → Locations. Staff pick the location when submitting a checklist.' }
       ],
-      keywords: ['uhid', 'ipid', 'patient', 'id', 'identifier', 'admission', 'audit', 'date', 'time']
+      keywords: ['location', 'zone', 'floor', 'ward', 'room', 'unit', 'area', 'building', 'block']
     },
     {
       id: 'rules',
@@ -221,14 +224,15 @@ export function UserManual() {
       icon: '⚠️',
       content: [
         { type: 'rules', value: [
-          'One submission per UHID + IPID + Department + Date + Time (date/time are set by the system on submit; submit again at a different time for another audit)',
-          'Submissions are locked after submit (cannot edit)',
-          'Remarks required when selecting NO',
-          'Only Chiefs can add corrective/preventive actions',
-          'Chiefs cannot edit original checklist responses'
+          'Department, Location, and Shift are required when submitting a checklist',
+          'Audit date and time are set automatically by the system on submit',
+          'Submissions are locked after submit — cannot edit. Contact admin if a correction is needed.',
+          'Add remarks when selecting NO (strongly recommended for quality records)',
+          'Only Supervisors / Dept Admins can add corrective/preventive actions',
+          'Supervisors cannot edit original checklist responses'
         ]}
       ],
-      keywords: ['rule', 'important', 'locked', 'edit', 'duplicate', 'remarks', 'date', 'time']
+      keywords: ['rule', 'important', 'locked', 'edit', 'duplicate', 'remarks', 'date', 'time', 'location']
     },
     {
       id: 'troubleshooting',
@@ -236,14 +240,14 @@ export function UserManual() {
       icon: '🔧',
       content: [
         { type: 'faq', value: [
-          { q: 'Duplicate - Cannot Submit', a: 'A submission already exists for this UHID + IPID + Department for the current date and time. Wait a moment and try again, or submit another audit later.' },
-          { q: 'Form not visible in navigation', a: 'Ask admin to assign the form to you.' },
-          { q: 'Cannot edit submitted checklist', a: 'Submissions are locked. Contact admin if needed.' },
-          { q: 'Report or Logs: which audit do I open?', a: 'List is grouped by Date + Time + IPID. Pick the row with the date and time of the audit you want to view.' },
-          { q: 'Page shows error', a: 'Refresh the page. Check internet connection. Contact admin if persists.' }
+          { q: 'Cannot submit — duplicate warning', a: 'A submission already exists for this Department + Location + Shift for the current date. Wait for the 24-hour window or contact admin.' },
+          { q: 'No locations available in dropdown', a: 'Ask admin to create locations in Configure → Locations.' },
+          { q: 'Form not visible in navigation', a: 'Ask admin to assign the form to your account or department.' },
+          { q: 'Cannot edit submitted checklist', a: 'Submissions are locked after submit. Contact your admin if a correction is needed.' },
+          { q: 'Page shows error', a: 'Refresh the page. Check your internet connection. Contact admin if the problem persists.' }
         ]}
       ],
-      keywords: ['error', 'problem', 'duplicate', 'cannot', 'not working', 'help', 'troubleshoot', 'date', 'time']
+      keywords: ['error', 'problem', 'duplicate', 'cannot', 'not working', 'help', 'troubleshoot', 'location', 'form']
     }
   ]
 

@@ -1,6 +1,15 @@
 const MasterData = require('../models/MasterData');
 
-const DEFAULT_DESIGNATIONS = ['Doctor', 'Chief', 'MRD Staff', 'Lab Technician', 'Nurse', 'Pharmacist', 'Unit Chief', 'Other'];
+const DEFAULT_DESIGNATIONS = [
+  'Quality Auditor',
+  'Staff Auditor',
+  'Unit Supervisor',
+  'Department Head',
+  'Quality Officer',
+  'Infection Control Officer',
+  'Nursing In-charge',
+  'Other',
+];
 const DEFAULT_WARDS = ['A1', 'A2', 'B1', 'B2', 'C1', 'ICU', 'CCU', 'Maternity'];
 const DEFAULT_UNITS = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
 
@@ -55,6 +64,41 @@ exports.updateMasterData = async (req, res) => {
     });
   } catch (err) {
     console.error('updateMasterData error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.addDesignation = async (req, res) => {
+  try {
+    const { designation } = req.body;
+    if (!designation || !String(designation).trim()) {
+      return res.status(400).json({ message: 'Designation is required' });
+    }
+    const value = String(designation).trim();
+    const doc = await getOrCreateMasterData();
+    if (doc.designations.includes(value)) {
+      return res.json({ designations: doc.designations });
+    }
+    doc.designations.push(value);
+    doc.designations.sort((a, b) => a.localeCompare(b));
+    await doc.save();
+    res.json({ designations: doc.designations });
+  } catch (err) {
+    console.error('addDesignation error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteDesignation = async (req, res) => {
+  try {
+    const name = decodeURIComponent(req.params.name || '').trim();
+    if (!name) return res.status(400).json({ message: 'Designation name required' });
+    const doc = await getOrCreateMasterData();
+    doc.designations = doc.designations.filter((d) => d !== name);
+    await doc.save();
+    res.json({ designations: doc.designations });
+  } catch (err) {
+    console.error('deleteDesignation error', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

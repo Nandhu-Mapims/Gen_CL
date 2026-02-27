@@ -289,16 +289,22 @@ exports.getChecklistForDepartment = async (req, res) => {
       }
 
       const userId = req.user?.sub ? new mongoose.Types.ObjectId(req.user.sub) : null;
-      const isAdmin = req.user?.role === 'admin';
+      const adminRoles = ['SUPER_ADMIN', 'QA', 'DEPT_ADMIN'];
+      const isAdmin = adminRoles.includes(req.user?.role);
 
       let hasAccess = false;
       if (isAdmin) {
         hasAccess = true;
       } else if (formTemplate.isCommon) {
         hasAccess = true;
-      } else if (userId && formTemplate.assignedUsers && formTemplate.assignedUsers.length > 0) {
+      } else if (userId) {
+        // Access if user is in assignedUsers OR if the form belongs to the user's department
         const assignedIds = (formTemplate.assignedUsers || []).map(id => id.toString());
         hasAccess = assignedIds.includes(userId.toString());
+        // Also allow if form has no assignedUsers restriction (open to department)
+        if (!hasAccess && (!formTemplate.assignedUsers || formTemplate.assignedUsers.length === 0)) {
+          hasAccess = true;
+        }
       }
 
       if (!hasAccess) {

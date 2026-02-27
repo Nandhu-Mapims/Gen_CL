@@ -19,7 +19,7 @@ export function ChangePasswordPage() {
       navigate('/login', { replace: true })
       return
     }
-    if (!initializing && user && !['admin', 'auditor', 'chief'].includes(user.role)) {
+    if (!initializing && user && !['SUPER_ADMIN', 'STAFF', 'SUPERVISOR', 'DEPT_ADMIN', 'QA'].includes(user.role)) {
       navigate('/', { replace: true })
     }
   }, [user, initializing, navigate])

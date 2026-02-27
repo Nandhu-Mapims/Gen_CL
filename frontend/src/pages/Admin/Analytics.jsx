@@ -247,7 +247,7 @@ export function Analytics() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] sm:text-xs text-slate-600 mb-1 font-medium uppercase tracking-wide">
-                Total Cases
+                Audit Sessions
               </p>
               <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">
                 {admissionStats?.summary?.totalAdmissions || comprehensive?.admissionStats?.totalAdmissions || 0}

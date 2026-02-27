@@ -17,20 +17,29 @@ export function AuditorAnalytics() {
   const loadAnalytics = async () => {
     setLoading(true)
     try {
-      const userId = user?.id || user?._id || ''
+      const userId = user?.id || user?._id
+      if (!userId) { setLoading(false); return }
       const submissions = await apiClient.get(`/audits?submittedBy=${encodeURIComponent(userId)}`)
 
       const responseVal = (s) => (s.responseValue || s.yesNoNa || '').toString().toUpperCase()
       const yesCount = submissions.filter(s => responseVal(s) === 'YES').length
       const noCount = submissions.filter(s => responseVal(s) === 'NO').length
-      const naCount = submissions.filter(s => responseVal(s) === 'N/A' || !responseVal(s)).length
+      const unansweredCount = submissions.filter(s => !responseVal(s) || (responseVal(s) !== 'YES' && responseVal(s) !== 'NO')).length
 
       // Documentation thoroughness: when auditor marked NO, did they add remarks?
       const noSubs = submissions.filter(s => responseVal(s) === 'NO')
       const noWithRemarks = noSubs.filter(s => s.remarks && String(s.remarks).trim()).length
       const thoroughnessRate = noSubs.length > 0 ? Math.round((noWithRemarks / noSubs.length) * 100) : 100
 
-      const uniquePatients = new Set(submissions.map(s => s.ipid).filter(Boolean)).size
+      // Count unique audit sessions (same submittedAt second + department + form)
+      const uniqueSessions = new Set(
+        submissions.map(s => {
+          const t = s.submittedAt ? Math.floor(new Date(s.submittedAt).getTime() / 1000) : 0
+          const d = s.department?._id || s.department || ''
+          const f = s.formTemplate?._id || s.formTemplate || ''
+          return `${t}_${d}_${f}`
+        })
+      ).size
 
       const byDepartment = {}
       submissions.forEach(s => {
@@ -61,12 +70,12 @@ export function AuditorAnalytics() {
         responseDistribution: [
           { name: 'YES', value: yesCount },
           { name: 'NO', value: noCount },
-          { name: 'N/A', value: naCount },
+          { name: 'Unanswered', value: unansweredCount },
         ],
         departmentDistribution: Object.values(byDepartment),
         dailyActivity: Object.values(byDate),
         totalSubmissions: submissions.length,
-        uniquePatients,
+        uniqueSessions,
         thoroughnessRate,
       })
     } catch (err) {
@@ -109,8 +118,8 @@ export function AuditorAnalytics() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Patients Audited</p>
-              <p className="text-4xl font-bold text-slate-900 mt-2">{stats?.uniquePatients || 0}</p>
+              <p className="text-sm text-slate-600">Audit Sessions</p>
+              <p className="text-4xl font-bold text-slate-900 mt-2">{stats?.uniqueSessions || 0}</p>
             </div>
             <div className="bg-maroon-50 p-4 rounded-full">
               <svg className="w-8 h-8 text-maroon-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

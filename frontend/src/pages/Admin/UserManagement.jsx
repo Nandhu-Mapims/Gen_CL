@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { apiClient } from '../../api/client'
 
 const ROLE_OPTIONS = [
@@ -18,6 +18,9 @@ export function UserManagement() {
   const [editingUser, setEditingUser] = useState(null)
   const [isPasswordFocused, setIsPasswordFocused] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [newDesignation, setNewDesignation] = useState('')
+  const [addingDesignation, setAddingDesignation] = useState(false)
+  const [designationError, setDesignationError] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false)
   const roleDropdownRef = useRef(null)
@@ -75,6 +78,36 @@ export function UserManagement() {
     }
   }
 
+  const handleAddDesignation = useCallback(async () => {
+    const value = newDesignation.trim()
+    if (!value) { setDesignationError('Please enter a designation name.'); return }
+    if (designations.map(d => d.toLowerCase()).includes(value.toLowerCase())) {
+      setDesignationError('This designation already exists.')
+      return
+    }
+    setDesignationError('')
+    try {
+      const data = await apiClient.post('/master-data/designations', { designation: value })
+      setDesignations(data.designations || [])
+      setFormData(prev => ({ ...prev, designation: value }))
+      setNewDesignation('')
+      setAddingDesignation(false)
+    } catch (err) {
+      setDesignationError(err.response?.data?.message || 'Failed to add designation')
+    }
+  }, [newDesignation, designations])
+
+  const handleDeleteDesignation = useCallback(async (name) => {
+    if (!confirm(`Remove "${name}" from the designation list?`)) return
+    try {
+      const data = await apiClient.delete(`/master-data/designations/${encodeURIComponent(name)}`)
+      setDesignations(data.designations || [])
+      if (formData.designation === name) setFormData(prev => ({ ...prev, designation: '' }))
+    } catch (err) {
+      alert('Failed to remove designation')
+    }
+  }, [formData.designation])
+
   const loadDepartments = async () => {
     try {
       const data = await apiClient.get('/departments')
@@ -131,6 +164,9 @@ export function UserManagement() {
 
   const handleEdit = (user) => {
     setEditingUser(user)
+    setAddingDesignation(false)
+    setNewDesignation('')
+    setDesignationError('')
     setFormData({
       name: user.name,
       email: user.email,
@@ -185,6 +221,9 @@ export function UserManagement() {
           onClick={() => {
             setShowForm(true)
             setEditingUser(null)
+            setAddingDesignation(false)
+            setNewDesignation('')
+            setDesignationError('')
             setFormData({
               name: '',
               email: '',
@@ -345,19 +384,86 @@ export function UserManagement() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Designation
-              </label>
-              <select
-                value={formData.designation}
-                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
-              >
-                <option value="">Select designation</option>
-                {designations.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-slate-700">Designation</label>
+                {!addingDesignation && (
+                  <button
+                    type="button"
+                    onClick={() => { setAddingDesignation(true); setDesignationError('') }}
+                    className="text-xs text-maroon-600 hover:text-maroon-800 font-medium flex items-center gap-1"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add new
+                  </button>
+                )}
+              </div>
+
+              {/* Existing designations dropdown */}
+              <div className="space-y-2">
+                <select
+                  value={formData.designation}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
+                >
+                  <option value="">— Select designation —</option>
+                  {designations.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+
+                {/* Manage list: show × buttons per item */}
+                {designations.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 px-1">
+                    {designations.map((d) => (
+                      <span key={d} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${formData.designation === d ? 'bg-maroon-100 border-maroon-300 text-maroon-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                        {d}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDesignation(d)}
+                          className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
+                          title={`Remove "${d}"`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline add-new row */}
+                {addingDesignation && (
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={newDesignation}
+                        onChange={(e) => { setNewDesignation(e.target.value); setDesignationError('') }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDesignation() } if (e.key === 'Escape') { setAddingDesignation(false); setNewDesignation('') } }}
+                        placeholder="e.g. Senior Auditor"
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 ${designationError ? 'border-red-400 bg-red-50' : 'border-slate-300'}`}
+                      />
+                      {designationError && <p className="text-xs text-red-600 mt-1">{designationError}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddDesignation}
+                      className="px-3 py-2 bg-maroon-600 hover:bg-maroon-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingDesignation(false); setNewDesignation(''); setDesignationError('') }}
+                      className="px-3 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 text-sm rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {['STAFF', 'SUPERVISOR', 'DEPT_ADMIN'].includes(formData.role) && (
@@ -406,6 +512,9 @@ export function UserManagement() {
                 onClick={() => {
                   setShowForm(false)
                   setEditingUser(null)
+                  setAddingDesignation(false)
+                  setNewDesignation('')
+                  setDesignationError('')
                 }}
                 className="border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-6 py-2 rounded-lg transition-colors text-sm font-medium"
               >

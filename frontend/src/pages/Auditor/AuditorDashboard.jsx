@@ -28,16 +28,27 @@ export function AuditorDashboard() {
   }
 
   const loadDashboardData = async () => {
-    if (!user?._id) {
+    const userId = user?.id || user?._id
+    if (!userId) {
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const allSubmissions = await apiClient.get(`/audits?submittedBy=${user._id}`)
+      const allSubmissions = await apiClient.get(`/audits?submittedBy=${userId}`)
 
       const totalSubmissions = allSubmissions.length
-      const uniquePatients = new Set(allSubmissions.map(s => s.uhid)).size
+
+      // Count unique audit sessions (same submittedAt second + department + form)
+      const uniqueSessions = new Set(
+        allSubmissions.map(s => {
+          const t = s.submittedAt ? Math.floor(new Date(s.submittedAt).getTime() / 1000) : 0
+          const d = s.department?._id || s.department || ''
+          const f = s.formTemplate?._id || s.formTemplate || ''
+          return `${t}_${d}_${f}`
+        })
+      ).size
+
       const recentCount = allSubmissions.filter(s => {
         const days = (Date.now() - new Date(s.submittedAt)) / (1000 * 60 * 60 * 24)
         return days <= 7
@@ -45,7 +56,7 @@ export function AuditorDashboard() {
 
       setStats({
         totalSubmissions,
-        uniquePatients,
+        uniqueSessions,
         recentSubmissions: recentCount,
         department: user?.department?.name || 'N/A',
       })
@@ -80,7 +91,7 @@ export function AuditorDashboard() {
             )}
           </div>
           <span className="inline-flex items-center rounded-full bg-maroon-50 px-3 py-1 text-xs font-semibold text-maroon-700 border border-maroon-100">
-            AUDITOR ROLE
+            {user?.role || 'STAFF'}
           </span>
         </div>
       </div>
@@ -103,12 +114,12 @@ export function AuditorDashboard() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-600">Patients Reviewed</p>
-              <p className="text-3xl font-bold text-slate-900 mt-2">{stats?.uniquePatients || 0}</p>
+              <p className="text-sm text-slate-600">Audit Sessions</p>
+              <p className="text-3xl font-bold text-slate-900 mt-2">{stats?.uniqueSessions || 0}</p>
             </div>
             <div className="bg-slate-100 p-3 rounded-full">
               <svg className="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </div>
           </div>
@@ -144,9 +155,9 @@ export function AuditorDashboard() {
                 <tr>
                   <th className="text-left p-3 font-semibold text-slate-700 w-12">#</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Date</th>
-                  <th className="text-left p-3 font-semibold text-slate-700">UHID</th>
-                  <th className="text-left p-3 font-semibold text-slate-700">IPID</th>
-                  <th className="text-left p-3 font-semibold text-slate-700">Patient Name</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Location</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Shift</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Form</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Department</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Checklist Item</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Response</th>
@@ -159,9 +170,9 @@ export function AuditorDashboard() {
                     <td className="p-3 text-slate-600">
                       {new Date(sub.submittedAt).toLocaleDateString()}
                     </td>
-                    <td className="p-3 font-medium text-slate-800">{sub.uhid}</td>
-                    <td className="p-3 text-slate-600">{sub.ipid}</td>
-                    <td className="p-3 font-medium text-slate-800">{sub.patientName}</td>
+                    <td className="p-3 text-slate-600">{sub.location || sub.locationId?.areaName || '—'}</td>
+                    <td className="p-3 text-slate-600">{sub.shift || sub.shiftId?.name || '—'}</td>
+                    <td className="p-3 font-medium text-slate-800">{sub.formTemplate?.name || '—'}</td>
                     <td className="p-3 text-slate-600">{sub.department?.name}</td>
                     <td className="p-3 text-slate-600">{sub.checklistItemId?.label || 'N/A'}</td>
                     <td className="p-3">
@@ -215,15 +226,15 @@ export function AuditorDashboard() {
             </div>
           )}
           <Link
-            to="/admin/patient-report"
+            to="/admin/submissions-report"
             className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-all shadow-sm"
           >
             <svg className="w-8 h-8 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <div className="flex-1">
-              <div className="font-semibold text-slate-900">Patient Reports</div>
-              <div className="text-sm text-slate-600">View detailed checklists</div>
+              <div className="font-semibold text-slate-900">Submissions Report</div>
+              <div className="text-sm text-slate-600">View detailed audit checklists</div>
             </div>
             <span className="text-slate-700">→</span>
           </Link>
@@ -247,14 +258,14 @@ export function AuditorDashboard() {
         <h4 className="font-semibold text-slate-900 mb-2">How to Submit a Checklist</h4>
         <ol className="list-decimal list-inside space-y-1 text-sm text-slate-700">
           <li>Click on a form from the navigation bar or Quick Actions above</li>
-          <li>Enter patient details: UHID, IPID, Patient Name, Ward, Unit No</li>
-          <li>Select the Unit Chief from the dropdown</li>
+          <li>Select Department, Location (Zone / Floor / Ward), and Shift</li>
+          <li>Optionally select the Unit Supervisor from the dropdown</li>
           <li>Fill out all checklist items (YES/NO responses)</li>
           <li>Add remarks if needed</li>
           <li>Click "Submit Checklist" - you'll receive a confirmation</li>
         </ol>
         <p className="text-xs text-slate-600 mt-3 font-medium">
-          Note: Each UHID + IPID + Department combination can only be submitted once. Check for duplicates before submitting.
+          Note: One submission per Department + Location + Shift per day. Check for duplicates before submitting.
         </p>
       </div>
     </div>

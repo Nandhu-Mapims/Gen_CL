@@ -93,7 +93,7 @@ export function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-maroon-600 to-maroon-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-slate-600">Comprehensive department-wise compliance and case analytics (by form&apos;s assigned department)</p>
+              <p className="mt-1 text-sm text-slate-600">Comprehensive department-wise quality audit compliance analytics (by form&apos;s assigned department)</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-gradient-to-r from-maroon-600 to-maroon-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-maroon-500/50">
               ADMIN ROLE
@@ -112,7 +112,7 @@ export function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-maroon-600 to-maroon-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-slate-600">Department-wise compliance and case analytics (by form&apos;s assigned department)</p>
+              <p className="mt-1 text-sm text-slate-600">Department-wise quality audit compliance analytics (by form&apos;s assigned department)</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-gradient-to-r from-maroon-600 to-maroon-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-maroon-500/50">
               ADMIN ROLE
@@ -143,7 +143,7 @@ export function Dashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-maroon-600 to-maroon-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-slate-600">Department-wise compliance and case analytics (by form&apos;s assigned department)</p>
+              <p className="mt-1 text-sm text-slate-600">Department-wise quality audit compliance analytics (by form&apos;s assigned department)</p>
             </div>
             <span className="inline-flex items-center rounded-full bg-gradient-to-r from-maroon-600 to-maroon-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-maroon-500/50">
               ADMIN ROLE
@@ -169,7 +169,7 @@ export function Dashboard() {
   const barChartData = departmentStats.map((s) => ({
     name: getDeptCode(s._id),
     fullName: getDeptName(s._id),
-    cases: s.caseCount || 0,
+    sessions: s.caseCount || 0,
     submissions: s.total || 0,
     compliant: s.compliant || 0,
     nonCompliant: s.nonCompliant || 0,
@@ -198,7 +198,7 @@ export function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-maroon-600 to-maroon-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-            <p className="mt-1 text-sm text-slate-600">Comprehensive department-wise compliance and case analytics (by form&apos;s assigned department)</p>
+            <p className="mt-1 text-sm text-slate-600">Comprehensive department-wise quality audit compliance analytics</p>
           </div>
           <span className="inline-flex items-center rounded-full bg-gradient-to-r from-maroon-600 to-maroon-600 px-3 py-1 text-xs font-semibold text-white shadow-lg shadow-maroon-500/50">
             ADMIN ROLE
@@ -212,10 +212,10 @@ export function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] sm:text-xs text-slate-600 mb-1 font-medium uppercase tracking-wide">
-                Total Cases
+                Audit Sessions
               </p>
               <p className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-maroon-600 to-maroon-600 bg-clip-text text-transparent">{totalCases}</p>
-              <p className="text-[9px] sm:text-xs text-slate-500 mt-1">Unique patients</p>
+              <p className="text-[9px] sm:text-xs text-slate-500 mt-1">Total audit sessions</p>
             </div>
             <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-br from-maroon-100 to-maroon-100 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 shadow-sm">
               <svg className="w-6 h-6 sm:w-7 sm:h-7 text-maroon-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -287,9 +287,9 @@ export function Dashboard() {
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-5 sm:p-6 border border-maroon-200/50">
           <div className="mb-4 sm:mb-5">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1">
-              Cases Count by Department
+              Audit Sessions by Department
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500">Patient cases distribution</p>
+            <p className="text-xs sm:text-sm text-slate-500">Sessions distribution across departments</p>
           </div>
           <ResponsiveContainer width="100%" height={280} className="sm:h-[320px]">
             <BarChart data={barChartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
@@ -320,16 +320,16 @@ export function Dashboard() {
                   padding: '12px',
                 }}
                 formatter={(value, name) => {
-                  if (name === 'cases') return [value, 'Cases']
+                  if (name === 'sessions') return [value, 'Sessions']
                   if (name === 'submissions') return [value, 'Submissions']
                   return [value, name]
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar 
-                dataKey="cases" 
+                dataKey="sessions" 
                 fill="url(#colorCases)" 
-                name="Cases" 
+                name="Sessions" 
                 radius={[8, 8, 0, 0]}
                 stroke="#2563eb"
                 strokeWidth={1}
@@ -342,9 +342,9 @@ export function Dashboard() {
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl p-5 sm:p-6 border border-maroon-200/50">
           <div className="mb-4 sm:mb-5">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-1">
-              Cases Distribution
+              Department Distribution
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500">Percentage breakdown</p>
+            <p className="text-xs sm:text-sm text-slate-500">Sessions breakdown by department</p>
           </div>
           <ResponsiveContainer width="100%" height={280} className="sm:h-[320px]">
             <PieChart>
@@ -453,7 +453,7 @@ export function Dashboard() {
                   Department
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Cases
+                  Sessions
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">
                   Submissions
@@ -482,7 +482,7 @@ export function Dashboard() {
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-center">
                     <span className="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs sm:text-sm font-semibold">
-                      {dept.cases}
+                      {dept.sessions}
                     </span>
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-center text-sm sm:text-base text-slate-700 font-medium">

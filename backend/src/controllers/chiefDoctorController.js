@@ -1,7 +1,7 @@
 const ChiefDoctor = require('../models/ChiefDoctor');
 const Department = require('../models/Department');
 
-// Admin: Create chief doctor
+// Admin: Create unit supervisor
 exports.createChiefDoctor = async (req, res) => {
   try {
     const { name, designation, departmentId, isActive, order } = req.body;
@@ -12,7 +12,7 @@ exports.createChiefDoctor = async (req, res) => {
 
     const data = {
       name: name.trim(),
-      designation: designation?.trim() || 'Unit Chief',
+      designation: designation?.trim() || 'Unit Supervisor',
       isActive: isActive !== undefined ? isActive : true,
       order: order !== undefined ? order : 0,
     };
@@ -35,7 +35,7 @@ exports.createChiefDoctor = async (req, res) => {
   }
 };
 
-// List all chief doctors (or by department)
+// List all unit supervisors (or by department)
 exports.listChiefDoctors = async (req, res) => {
   try {
     const { departmentId, isActive } = req.query;
@@ -64,7 +64,7 @@ exports.listChiefDoctors = async (req, res) => {
   }
 };
 
-// Admin: Update chief doctor
+// Admin: Update unit supervisor
 exports.updateChiefDoctor = async (req, res) => {
   try {
     const { id } = req.params;
@@ -72,7 +72,7 @@ exports.updateChiefDoctor = async (req, res) => {
 
     const update = {};
     if (name !== undefined) update.name = name.trim();
-    if (designation !== undefined) update.designation = designation.trim() || 'Unit Chief';
+    if (designation !== undefined) update.designation = designation.trim() || 'Unit Supervisor';
     if (isActive !== undefined) update.isActive = isActive;
     if (order !== undefined) update.order = order;
 
@@ -92,7 +92,7 @@ exports.updateChiefDoctor = async (req, res) => {
       .populate('department', 'name code');
 
     if (!chiefDoctor) {
-      return res.status(404).json({ message: 'Chief doctor not found' });
+      return res.status(404).json({ message: 'Unit supervisor not found' });
     }
 
     res.json(chiefDoctor);
@@ -102,14 +102,14 @@ exports.updateChiefDoctor = async (req, res) => {
   }
 };
 
-// Admin: Delete chief doctor
+// Admin: Delete unit supervisor
 exports.deleteChiefDoctor = async (req, res) => {
   try {
     const { id } = req.params;
     const chiefDoctor = await ChiefDoctor.findByIdAndDelete(id);
 
     if (!chiefDoctor) {
-      return res.status(404).json({ message: 'Chief doctor not found' });
+      return res.status(404).json({ message: 'Unit supervisor not found' });
     }
 
     res.status(204).send();

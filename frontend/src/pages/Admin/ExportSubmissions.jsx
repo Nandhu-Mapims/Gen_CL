@@ -174,8 +174,8 @@ export function ExportSubmissions() {
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700 w-12">#</th>
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Date</th>
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Department</th>
-                  <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">UHID</th>
-                  <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Patient</th>
+                  <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Session ID</th>
+                  <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Reference</th>
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Item</th>
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Response</th>
                   <th className="px-2 sm:px-3 py-2 text-left font-semibold text-slate-700">Submitted By</th>
@@ -187,8 +187,8 @@ export function ExportSubmissions() {
                     <td className="px-2 sm:px-3 py-2 text-slate-500 font-medium">{idx + 1}</td>
                     <td className="px-2 sm:px-3 py-2">{row['Submission Date']}</td>
                     <td className="px-2 sm:px-3 py-2">{row['Department']}</td>
-                    <td className="px-2 sm:px-3 py-2">{row['UHID']}</td>
-                    <td className="px-2 sm:px-3 py-2">{row['Patient Name']}</td>
+                    <td className="px-2 sm:px-3 py-2">{row['UHID'] || row['Session ID'] || '—'}</td>
+                    <td className="px-2 sm:px-3 py-2">{row['Patient Name'] || row['Reference'] || '—'}</td>
                     <td className="px-2 sm:px-3 py-2">{row['Checklist Item']}</td>
                     <td className="px-2 sm:px-3 py-2">{row['Response Value']}</td>
                     <td className="px-2 sm:px-3 py-2">{row['Submitted By']}</td>

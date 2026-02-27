@@ -26,6 +26,7 @@ export function Form() {
   const [assetsList, setAssetsList] = useState([])
   const [shiftsList, setShiftsList] = useState([])
   const [supervisors, setSupervisors] = useState([])
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -518,6 +519,7 @@ export function Form() {
     setAsset('')
     setShiftId('')
     setShift('')
+    setSelectedSupervisorId('')
     setMessage('')
     setDuplicateExists(false)
     setDuplicateMessage('')
@@ -618,6 +620,10 @@ export function Form() {
       setMessage('Please select a shift.')
       return
     }
+    if (!selectedSupervisorId) {
+      setMessage('Please select a supervisor to submit to.')
+      return
+    }
 
     // Validate responses (YES_NO can be stored in responseValue or yesNoNa)
     for (const it of items) {
@@ -664,11 +670,10 @@ export function Form() {
         departmentId: departmentIdForSubmit,
         formTemplateId: formTemplateId,
         locationId: locationId || undefined,
-        assetId: assetId || undefined,
         shiftId: shiftId || undefined,
         location: location.trim() || '',
-        asset: asset.trim() || '',
         shift: shift.trim() || '',
+        assignedToUserId: selectedSupervisorId || undefined,
         items: items.map((it) => ({
           checklistItemId: it._id,
           ...answers[it._id],
@@ -862,7 +867,7 @@ export function Form() {
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-maroon-200/50 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-4 py-3">
             <h3 className="text-sm font-semibold text-slate-900">
-              Operational context <span className="text-xs font-normal text-slate-600 ml-2">(Department/Service, Location, Asset, Shift)</span>
+              Operational context <span className="text-xs font-normal text-slate-600 ml-2">(Department/Service, Location, Shift, Supervisor)</span>
             </h3>
           </div>
           <div className="px-4 pt-3">
@@ -957,25 +962,6 @@ export function Form() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-700">Asset <span className="text-slate-500 font-normal">(optional)</span></label>
-                <select
-                  value={assetId}
-                  onChange={(e) => {
-                    const id = e.target.value
-                    setAssetId(id)
-                    const a = assetsList.find((x) => (x._id?.toString() || x._id) === id)
-                    setAsset(a ? (a.name || a.assetCode || '') : '')
-                  }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists}
-                >
-                  <option value="">Select asset (optional)</option>
-                  {assetsList.map((a) => (
-                    <option key={a._id} value={a._id}>{a.name} {a.assetCode ? `(${a.assetCode})` : ''}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Shift <span className="text-red-600">*</span></label>
                 <select
                   value={shiftId}
@@ -993,6 +979,25 @@ export function Form() {
                   {shiftsList.map((s) => (
                     <option key={s._id} value={s._id}>
                       {s.name} {s.startTime && s.endTime ? `(${s.startTime} - ${s.endTime})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Submit to Supervisor <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={selectedSupervisorId}
+                  onChange={(e) => setSelectedSupervisorId(e.target.value)}
+                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
+                  disabled={duplicateExists}
+                  required
+                >
+                  <option value="">Select supervisor</option>
+                  {supervisors.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}{s.designation ? ` — ${s.designation}` : ''}{s.department?.name ? ` (${s.department.name})` : ''}
                     </option>
                   ))}
                 </select>
@@ -1091,7 +1096,7 @@ export function Form() {
                                   </select>
                                 ) : (
                                   <div className="flex items-center justify-center gap-3 flex-nowrap">
-                                    {['YES', 'NO', 'N/A'].map((opt) => (
+                                    {['YES', 'NO'].map((opt) => (
                                       <label key={opt} className="flex items-center gap-1.5 cursor-pointer group shrink-0">
                                         <input
                                           type="radio"
@@ -1101,8 +1106,8 @@ export function Form() {
                                           onChange={(e) => {
                                             const val = e.target.value
                                             updateAnswer(it._id, 'responseValue', val)
-                                            updateAnswer(it._id, 'yesNoNa', val === 'YES' || val === 'NO' ? val : '')
-                                            if (val === 'YES' || val === 'N/A') {
+                                            updateAnswer(it._id, 'yesNoNa', val)
+                                            if (val === 'YES') {
                                               updateAnswer(it._id, 'remarks', '')
                                             }
                                           }}

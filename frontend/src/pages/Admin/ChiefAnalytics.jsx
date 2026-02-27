@@ -79,9 +79,9 @@ export function ChiefAnalytics() {
       <div className="bg-white/95 backdrop-blur-md border border-maroon-200/50 rounded-2xl shadow-xl px-5 py-4 sm:py-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Chief Analytics</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Supervisor Analytics</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Statistics, trends, and performance insights of chiefs (Unit Chief)
+              Statistics, trends, and performance insights per Unit Supervisor
             </p>
             <p className="text-xs text-slate-500 mt-1">Generated: {formatDate(generatedAt)}</p>
           </div>
@@ -98,9 +98,9 @@ export function ChiefAnalytics() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Chiefs</div>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Supervisors</div>
           <div className="text-2xl font-bold text-slate-900">{summary.totalChiefs ?? 0}</div>
-          <div className="text-xs text-slate-500 mt-1">Unique Unit Chiefs with submissions</div>
+          <div className="text-xs text-slate-500 mt-1">Unique Unit Supervisors with submissions</div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Total Submissions</div>
@@ -127,26 +127,26 @@ export function ChiefAnalytics() {
       {/* Chiefs performance table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 bg-slate-50">
-          <h2 className="text-lg font-semibold text-slate-900">Chief Performance</h2>
-          <p className="text-sm text-slate-600 mt-0.5">Per-chief statistics and trends</p>
+          <h2 className="text-lg font-semibold text-slate-900">Supervisor Performance</h2>
+          <p className="text-sm text-slate-600 mt-0.5">Per-supervisor statistics and trends</p>
         </div>
         <div className="overflow-x-auto">
           {chiefs.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
               <div className="text-4xl mb-2">👔</div>
-              <p className="font-medium">No chief data yet</p>
-              <p className="text-sm mt-1">Submissions with a Unit Chief will appear here.</p>
+              <p className="font-medium">No supervisor data yet</p>
+              <p className="text-sm mt-1">Submissions assigned to a Unit Supervisor will appear here.</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-slate-100 border-b border-slate-200">
                 <tr>
                   <th className="text-left p-3 font-semibold text-slate-700 w-12">#</th>
-                  <th className="text-left p-3 font-semibold text-slate-700">Chief Name</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Supervisor Name</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Submissions</th>
                   <th className="text-right p-3 font-semibold text-slate-700">YES</th>
                   <th className="text-right p-3 font-semibold text-slate-700">NO</th>
-                  <th className="text-right p-3 font-semibold text-slate-700">Patients</th>
+                  <th className="text-right p-3 font-semibold text-slate-700">Sessions</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Compliance %</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Actions Filled</th>
                   <th className="text-right p-3 font-semibold text-slate-700">Coverage %</th>
