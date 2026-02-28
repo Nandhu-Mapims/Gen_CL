@@ -16,20 +16,11 @@ exports.assignUsersToForm = async (req, res) => {
       return res.status(404).json({ message: 'Form template not found' });
     }
 
-    // Verify all user IDs exist and enforce cross-audit only (no same-department assignment)
+    // Verify all user IDs exist; admin can assign any staff (no department restriction)
     if (userIds.length > 0) {
       const users = await User.find({ _id: { $in: userIds } }).populate('department', '_id');
       if (users.length !== userIds.length) {
         return res.status(400).json({ message: 'One or more user IDs are invalid' });
-      }
-      const formDeptIds = (formTemplate.departments || []).map((d) => d.toString());
-      for (const u of users) {
-        const userDeptId = u.department ? (u.department._id || u.department).toString() : null;
-        if (userDeptId && formDeptIds.includes(userDeptId)) {
-          return res.status(400).json({
-            message: 'Cross audit only: users from the form\'s department cannot be assigned to audit that department. Please assign users from other departments.',
-          });
-        }
       }
     }
 

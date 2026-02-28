@@ -3,16 +3,6 @@ import { apiClient } from '../../api/client'
 
 const isAssignable = (u) => ['STAFF', 'SUPERVISOR', 'DEPT_ADMIN', 'QA'].includes(u.role)
 
-const userInFormDepartment = (user, form) => {
-  if (!form?.departments?.length) return false
-  const userDeptId = typeof user.department === 'object' ? user.department?._id : user.department
-  if (!userDeptId) return false
-  return form.departments.some((d) => {
-    const formDeptId = typeof d === 'object' ? d._id : d
-    return userDeptId.toString() === formDeptId.toString()
-  })
-}
-
 const userMatchesSearch = (user, q) => {
   if (!q || !q.trim()) return true
   const s = q.trim().toLowerCase()
@@ -95,12 +85,7 @@ export function FormUserAssignment() {
 
   const handleSelectForm = (form) => {
     setSelectedForm(form)
-    const assignedIds = getAssignedUserIds(form)
-    const crossDeptOnly = assignedIds.filter((id) => {
-      const u = users.find((us) => String(us._id) === String(id))
-      return u && !userInFormDepartment(u, form)
-    })
-    setSelectedUsers(crossDeptOnly)
+    setSelectedUsers(getAssignedUserIds(form))
     setSearchQuery('')
   }
 
@@ -117,20 +102,12 @@ export function FormUserAssignment() {
   }
 
   const assignableUsers = users.filter(isAssignable)
-  const departmentUsers = assignableUsers.filter((u) => userInFormDepartment(u, selectedForm) && userMatchesSearch(u, searchQuery))
-  const otherUsers = assignableUsers.filter((u) => !userInFormDepartment(u, selectedForm) && userMatchesSearch(u, searchQuery))
+  const filteredUsers = assignableUsers.filter((u) => userMatchesSearch(u, searchQuery))
 
-  // For left panel: count assigned users (cross-dept only; same-dept are not allowed)
-  const getAssignedCountsByDept = (form) => {
-    const ids = getAssignedUserIds(form)
-    let crossDept = 0
-    for (const id of ids) {
-      const user = users.find((u) => String(u._id) === String(id))
-      if (!user) continue
-      if (!userInFormDepartment(user, form)) crossDept++
-    }
-    return { crossDept }
-  }
+  const isAssignedToSelectedForm = (userId) =>
+    selectedForm && selectedUsers.some((id) => String(id) === String(userId))
+
+  const getAssignedCount = (form) => getAssignedUserIds(form).length
 
   const handleSave = async () => {
     if (!selectedForm) return
@@ -165,15 +142,8 @@ export function FormUserAssignment() {
       <div className="bg-white/95 backdrop-blur-md border border-maroon-200/50 rounded-2xl shadow-xl px-5 py-4 sm:py-5">
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Assign Checklists to Users</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Admin only allocates who audits which checklist. Assign users from <strong>other</strong> departments (cross audit only).
+          Admin can assign <strong>any staff</strong> to any checklist. Select a form, then tick the users who should have access. Assigned status is shown on each card.
         </p>
-        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-slate-700">
-          <div className="flex flex-col gap-1">
-            <span><strong>Cross audit only:</strong> Users from a form&apos;s department cannot be assigned to audit that department (e.g. Ortho user cannot audit Ortho).</span>
-            <span>• Only users from <strong>other</strong> departments can be assigned to a checklist</span>
-            <span>• Department on the form is a label only; access is by assignment only</span>
-          </div>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -199,18 +169,15 @@ export function FormUserAssignment() {
                   {form.departments?.map((d) => d.name).join(', ') || 'No department'}
                 </div>
                 <div className="text-xs text-slate-500 mt-2 flex flex-wrap gap-1.5 items-center">
-                  {(() => {
-                    const { crossDept } = getAssignedCountsByDept(form)
-                    return crossDept > 0 ? (
-                      <span className="inline-block px-2 py-1 bg-amber-100 text-amber-800 rounded font-medium" title="Assigned (cross-department)">
-                        {crossDept} user{crossDept !== 1 ? 's' : ''} assigned
-                      </span>
-                    ) : (
-                      <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 rounded">
-                        No users assigned – only assigned users can access
-                      </span>
-                    )
-                  })()}
+                  {getAssignedCount(form) > 0 ? (
+                    <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-800 rounded font-medium">
+                      {getAssignedCount(form)} user{getAssignedCount(form) !== 1 ? 's' : ''} assigned
+                    </span>
+                  ) : (
+                    <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 rounded">
+                      No users assigned
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -225,7 +192,7 @@ export function FormUserAssignment() {
             </h3>
             {selectedForm && (
               <p className="text-sm text-slate-600 mt-1">
-                Select users from <strong>other</strong> departments only (cross audit). Users from this form&apos;s department cannot be assigned.
+                Select staff to assign. Each card shows whether the user is <strong>Assigned</strong> or <strong>Not assigned</strong> to this checklist.
               </p>
             )}
           </div>
@@ -250,45 +217,35 @@ export function FormUserAssignment() {
                   </div>
                 ) : (
                   <div className="space-y-4 max-h-[420px] overflow-y-auto">
-                    {/* Cross-audit only: same-department users cannot be assigned - show as info only */}
-                    {departmentUsers.length > 0 && (
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                        <div className="text-xs font-semibold text-slate-600 mb-1">
-                          Users from this form&apos;s department (cannot be assigned – cross audit only)
-                        </div>
-                        <p className="text-xs text-slate-500">
-                          {departmentUsers.length} user{departmentUsers.length !== 1 ? 's' : ''} in {selectedForm.departments?.map((d) => (typeof d === 'object' ? d.name : '')).filter(Boolean).join(', ') || 'form dept'} – they cannot audit their own department.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Assignable: only cross-department users, grouped by designation and department */}
-                    <div>
-                      <div className="text-xs font-semibold text-slate-700 mb-2 px-2">
-                        Assignable users (other departments only) – by designation and department
-                      </div>
-                      {otherUsers.length === 0 ? (
-                        <p className="text-xs text-slate-500 px-2 py-2">
-                          {searchQuery ? 'No users from other departments match your search.' : 'No users from other departments available to assign.'}
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {groupByDesignationAndDepartment(otherUsers).map(({ designation, departments: deptGroups }) => (
-                            <div key={designation} className="rounded-lg border border-slate-200 overflow-hidden">
-                              <div className="bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                                {designation}
-                              </div>
-                              <div className="divide-y divide-slate-100">
-                                {deptGroups.map(({ deptName, users: userList }) => (
-                                  <div key={`${designation}-${deptName}`}>
-                                    <div className="px-3 py-1.5 bg-slate-50 text-xs font-medium text-slate-600">
-                                      {deptName}
-                                    </div>
-                                    <div className="space-y-0.5 p-2">
-                                      {userList.map((user) => (
+                    <div className="text-xs font-semibold text-slate-700 mb-2 px-2">
+                      Staff – by designation and department (tick to assign)
+                    </div>
+                    {filteredUsers.length === 0 ? (
+                      <p className="text-xs text-slate-500 px-2 py-2">
+                        {searchQuery ? 'No users match your search.' : 'No assignable users.'}
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {groupByDesignationAndDepartment(filteredUsers).map(({ designation, departments: deptGroups }) => (
+                          <div key={designation} className="rounded-lg border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                              {designation}
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                              {deptGroups.map(({ deptName, users: userList }) => (
+                                <div key={`${designation}-${deptName}`}>
+                                  <div className="px-3 py-1.5 bg-slate-50 text-xs font-medium text-slate-600">
+                                    {deptName}
+                                  </div>
+                                  <div className="space-y-0.5 p-2">
+                                    {userList.map((user) => {
+                                      const assigned = isAssignedToSelectedForm(user._id)
+                                      return (
                                         <label
                                           key={user._id}
-                                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-maroon-50 cursor-pointer border border-transparent hover:border-maroon-200"
+                                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${
+                                            assigned ? 'bg-emerald-50 border-emerald-200' : 'border-transparent hover:border-maroon-200 hover:bg-maroon-50'
+                                          }`}
                                         >
                                           <input
                                             type="checkbox"
@@ -300,17 +257,24 @@ export function FormUserAssignment() {
                                             <div className="font-medium text-slate-800 truncate text-sm">{user.name}</div>
                                             <div className="text-xs text-slate-600 truncate">{user.email}</div>
                                           </div>
+                                          <span
+                                            className={`flex-shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                              assigned ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-600'
+                                            }`}
+                                          >
+                                            {assigned ? 'Assigned' : 'Not assigned'}
+                                          </span>
                                         </label>
-                                      ))}
-                                    </div>
+                                      )
+                                    })}
                                   </div>
-                                ))}
-                              </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -318,9 +282,9 @@ export function FormUserAssignment() {
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-slate-600">
                     {selectedUsers.length === 0 ? (
-                      <span>No users assigned – only explicitly assigned users can access this checklist</span>
+                      <span>No users assigned – only assigned users can access this checklist</span>
                     ) : (
-                      <span>✓ {selectedUsers.length} user(s) assigned (cross-department)</span>
+                      <span>✓ {selectedUsers.length} user(s) assigned</span>
                     )}
                   </div>
                   <div className="flex gap-2">

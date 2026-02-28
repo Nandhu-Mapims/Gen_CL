@@ -1,5 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { apiClient } from '../../api/client'
+
+function useDepartmentHierarchy(departments) {
+  return useMemo(() => {
+    const list = Array.isArray(departments) ? departments : []
+    const topLevel = list.filter((d) => !d.parent)
+    const childrenOf = {}
+    list.filter((d) => d.parent).forEach((d) => {
+      const pid = d.parent?._id ?? d.parent
+      if (!pid) return
+      const key = typeof pid === 'object' ? String(pid) : String(pid)
+      if (!childrenOf[key]) childrenOf[key] = []
+      childrenOf[key].push(d)
+    })
+    return { topLevel, childrenOf }
+  }, [departments])
+}
 
 export function FormBuilder() {
   const [departments, setDepartments] = useState([])
@@ -8,6 +24,7 @@ export function FormBuilder() {
   const [scope, setScope] = useState('SINGLE')
   const [departmentId, setDepartmentId] = useState('')
   const [isMandatory, setIsMandatory] = useState(false)
+  const { topLevel, childrenOf } = useDepartmentHierarchy(departments)
 
   const load = async () => {
     const [depts, checklist] = await Promise.all([
@@ -19,17 +36,19 @@ export function FormBuilder() {
   }
 
   const deptsDefaultId = () => {
-    const first = departments[0]
+    const first = topLevel[0] ?? departments[0]
     return first ? first._id : ''
   }
 
   useEffect(() => {
     ;(async () => {
       const depts = await apiClient.get('/departments')
-      setDepartments(depts)
-      if (depts.length) {
-        setDepartmentId(depts[0]._id)
-        const checklist = await apiClient.get('/checklists/department/' + depts[0]._id)
+      setDepartments(Array.isArray(depts) ? depts : [])
+      if (depts?.length) {
+        const first = depts.find((d) => !d.parent) ?? depts[0]
+        const id = first._id
+        setDepartmentId(id)
+        const checklist = await apiClient.get('/checklists/department/' + id)
         setItems(checklist)
       }
     })()
@@ -89,17 +108,23 @@ export function FormBuilder() {
       </p>
 
       <div className="flex flex-wrap gap-3 items-center">
-        <label className="text-sm text-slate-700">Preview for department:</label>
+        <label className="text-sm text-slate-700">Preview for department or sub-department:</label>
         <select
-          className="border rounded px-2 py-1 text-sm"
+          className="border rounded px-2 py-1 text-sm min-w-[220px]"
           value={departmentId}
           onChange={(e) => handleDepartmentChange(e.target.value)}
         >
-          {departments.map((d) => (
-            <option key={d._id} value={d._id}>
-              {d.name}
-            </option>
-          ))}
+          {topLevel.map((parent) => {
+            const subs = childrenOf[String(parent._id)] ?? []
+            return (
+              <optgroup key={parent._id} label={parent.name}>
+                <option value={parent._id}>{parent.name} — overall</option>
+                {subs.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map((sub) => (
+                  <option key={sub._id} value={sub._id}>└ {sub.name}</option>
+                ))}
+              </optgroup>
+            )
+          })}
         </select>
       </div>
 
@@ -129,17 +154,23 @@ export function FormBuilder() {
         </div>
         {scope === 'SINGLE' && (
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Department or sub-department</label>
             <select
-              className="border rounded w-full px-2 py-1 text-sm"
+              className="border rounded w-full px-2 py-1 text-sm min-w-[200px]"
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
             >
-              {departments.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
+              {topLevel.map((parent) => {
+                const subs = childrenOf[String(parent._id)] ?? []
+                return (
+                  <optgroup key={parent._id} label={parent.name}>
+                    <option value={parent._id}>{parent.name} — overall</option>
+                    {subs.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map((sub) => (
+                      <option key={sub._id} value={sub._id}>└ {sub.name}</option>
+                    ))}
+                  </optgroup>
+                )
+              })}
             </select>
           </div>
         )}

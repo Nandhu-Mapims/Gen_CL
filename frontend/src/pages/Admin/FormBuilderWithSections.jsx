@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { apiClient } from '../../api/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,9 +6,26 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
+function useDepartmentHierarchy(departments) {
+  return useMemo(() => {
+    const list = Array.isArray(departments) ? departments : []
+    const topLevel = list.filter((d) => !d.parent)
+    const childrenOf = {}
+    list.filter((d) => d.parent).forEach((d) => {
+      const pid = d.parent?._id ?? d.parent
+      if (!pid) return
+      const key = String(pid)
+      if (!childrenOf[key]) childrenOf[key] = []
+      childrenOf[key].push(d)
+    })
+    return { topLevel, childrenOf }
+  }, [departments])
+}
+
 export function FormBuilderWithSections() {
   const [forms, setForms] = useState([])
   const [departments, setDepartments] = useState([])
+  const { topLevel, childrenOf } = useDepartmentHierarchy(departments)
   const [selectedForm, setSelectedForm] = useState(null)
   const [checklistItems, setChecklistItems] = useState([])
   const [showFormModal, setShowFormModal] = useState(false)
@@ -460,17 +477,17 @@ export function FormBuilderWithSections() {
             </div>
           </div>
 
-          {/* Sections List */}
+          {/* Sections List — enable section to create items */}
           {selectedForm.sections && selectedForm.sections.length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-4">
-              <h4 className="font-semibold text-slate-800 mb-3">Form Sections:</h4>
+              <h4 className="font-semibold text-slate-800 mb-3">Form Sections (add items under a section)</h4>
               <div className="space-y-2">
                 {selectedForm.sections
                   .sort((a, b) => a.order - b.order)
                   .map((section, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-2 bg-slate-50 rounded"
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
                     >
                       <div>
                         <span className="font-medium text-slate-800">{section.name}</span>
@@ -478,7 +495,31 @@ export function FormBuilderWithSections() {
                           <span className="text-sm text-slate-600 ml-2">- {section.description}</span>
                         )}
                       </div>
-                      <span className="text-xs text-slate-500">Order: {section.order}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">Order: {section.order}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setEditingItem(null)
+                            setItemData({
+                              label: '',
+                              section: section.name,
+                              responseType: 'YES_NO',
+                              responseOptions: '',
+                              departmentScope: 'SINGLE',
+                              departmentId: selectedForm.departments?.[0]?._id || '',
+                              formTemplateId: selectedForm._id,
+                              isMandatory: false,
+                              order: (itemsBySection[section.name]?.length ?? 0) + 1,
+                            })
+                            setShowItemModal(true)
+                          }}
+                          className="bg-maroon-600 hover:bg-maroon-700 text-white text-xs"
+                        >
+                          + Create item
+                        </Button>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -542,6 +583,31 @@ export function FormBuilderWithSections() {
                             </div>
                           </div>
                         ))}
+                    </div>
+                    <div className="p-3 bg-slate-50 border-t border-slate-200">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingItem(null)
+                          setItemData({
+                            label: '',
+                            section: sectionName,
+                            responseType: 'YES_NO',
+                            responseOptions: '',
+                            departmentScope: 'SINGLE',
+                            departmentId: selectedForm.departments?.[0]?._id || '',
+                            formTemplateId: selectedForm._id,
+                            isMandatory: false,
+                            order: (itemsBySection[sectionName]?.length ?? 0) + 1,
+                          })
+                          setShowItemModal(true)
+                        }}
+                        className="w-full text-maroon-700 border-maroon-200 hover:bg-maroon-50"
+                      >
+                        + Add item to this section
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -792,25 +858,45 @@ export function FormBuilderWithSections() {
                   onChange={(e) => setItemData({ ...itemData, departmentScope: e.target.value })}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2"
                 >
-                  <option value="SINGLE">Single Department</option>
+                  <option value="SINGLE">Single (overall or specific sub-department)</option>
                   <option value="ALL">All Departments (Common)</option>
                 </select>
               </div>
               {itemData.departmentScope === 'SINGLE' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Department — Overall or specific sub-department
+                  </label>
                   <select
                     value={itemData.departmentId}
                     onChange={(e) => setItemData({ ...itemData, departmentId: e.target.value })}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2"
                   >
-                    <option value="">Select Department</option>
-                    {departments.map((dept) => (
-                      <option key={dept._id} value={dept._id}>
-                        {dept.name}
-                      </option>
-                    ))}
+                    <option value="">Select overall department or specific sub-department</option>
+                    {topLevel
+                      .filter((d) => d.isActive !== false)
+                      .map((parent) => {
+                        const subs = childrenOf[String(parent._id)] ?? []
+                        return (
+                          <optgroup key={parent._id} label={parent.name}>
+                            <option value={parent._id}>
+                              {parent.name} ({parent.code}) — overall
+                            </option>
+                            {subs
+                              .filter((s) => s.isActive !== false)
+                              .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                              .map((sub) => (
+                                <option key={sub._id} value={sub._id}>
+                                  └ {sub.name} ({sub.code}) — specific
+                                </option>
+                              ))}
+                          </optgroup>
+                        )
+                      })}
                   </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Choose <strong>overall</strong> for the whole department or <strong>specific</strong> sub-department (e.g. Ward Cleaning Unit).
+                  </p>
                 </div>
               )}
               <div>

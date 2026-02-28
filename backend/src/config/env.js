@@ -34,6 +34,6 @@ module.exports = {
   PORT: Number(process.env.PORT) || 5000,
   JWT_SECRET,
   MONGO_URI,
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   NODE_ENV: process.env.NODE_ENV || 'development',
 };

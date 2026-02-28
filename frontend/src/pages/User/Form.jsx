@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { apiClient } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
@@ -16,6 +16,7 @@ export function Form() {
   const [answers, setAnswers] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
+  const [locationType, setLocationType] = useState('')
   const [locationId, setLocationId] = useState('')
   const [location, setLocation] = useState('')
   const [assetId, setAssetId] = useState('')
@@ -51,6 +52,7 @@ export function Form() {
     const key = getDraftKey()
     const draft = {
       departmentId,
+      locationType,
       locationId,
       assetId,
       shiftId,
@@ -68,7 +70,27 @@ export function Form() {
     } catch (e) {
       console.warn('Failed to save draft:', e)
     }
-  }, [getDraftKey, departmentId, locationId, assetId, shiftId, location, asset, shift, answers, formTemplateId, formTemplate?.name])
+  }, [getDraftKey, departmentId, locationType, locationId, assetId, shiftId, location, asset, shift, answers, formTemplateId, formTemplate?.name])
+
+  const availableLocationTypes = useMemo(() => {
+    const TYPE_ORDER = ['ZONE', 'FLOOR', 'WARD', 'UNIT', 'ROOM', 'OTHER']
+    const typeSet = new Set(
+      (Array.isArray(locationsList) ? locationsList : [])
+        .map((l) => String(l?.locationType || 'OTHER').toUpperCase())
+        .filter(Boolean)
+    )
+    return TYPE_ORDER.filter((t) => typeSet.has(t))
+  }, [locationsList])
+
+  // If a draft restored locationId exists, backfill locationType from DB list
+  useEffect(() => {
+    if (locationType) return
+    if (!locationId) return
+    const loc = (Array.isArray(locationsList) ? locationsList : []).find((x) => (x._id?.toString?.() || String(x._id)) === String(locationId))
+    if (!loc) return
+    const t = String(loc.locationType || 'OTHER').toUpperCase()
+    if (t) setLocationType(t)
+  }, [locationId, locationType, locationsList])
 
   const clearDraft = useCallback(() => {
     try {
@@ -236,7 +258,7 @@ export function Form() {
         }
         try {
           const [locations, shifts, assets] = await Promise.all([
-            apiClient.get('/locations').catch(() => []),
+            apiClient.get('/locations?selectable=true').catch(() => []),
             apiClient.get('/shifts').catch(() => []),
             apiClient.get('/assets').catch(() => []),
           ])
@@ -307,6 +329,7 @@ export function Form() {
                   }
                   setLocationId(draft.locationId || '')
                   setLocation(draft.location || '')
+                  setLocationType(draft.locationType || '')
                   setAssetId(draft.assetId || '')
                   setAsset(draft.asset || '')
                   setShiftId(draft.shiftId || '')
@@ -938,6 +961,29 @@ export function Form() {
                 </select>
               </div>
               <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700">Location Type <span className="text-red-600">*</span></label>
+                <select
+                  value={locationType}
+                  onChange={(e) => {
+                    const t = e.target.value
+                    setLocationType(t)
+                    // Reset dependent selections
+                    setLocationId('')
+                    setLocation('')
+                    setAssetId('')
+                    setAsset('')
+                  }}
+                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
+                  disabled={duplicateExists}
+                  required
+                >
+                  <option value="">Select type</option>
+                  {availableLocationTypes.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-700">Location <span className="text-red-600">*</span></label>
                 <select
                   value={locationId}
@@ -946,19 +992,33 @@ export function Form() {
                     setLocationId(id)
                     const loc = locationsList.find((x) => (x._id?.toString() || x._id) === id)
                     setLocation(loc ? [loc.areaName, loc.building, loc.floor].filter(Boolean).join(' / ') : '')
+                    const t = String(loc?.locationType || 'OTHER').toUpperCase()
+                    if (t) setLocationType(t)
                     setAssetId('')
                     setAsset('')
                   }}
                   className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists}
+                  disabled={duplicateExists || !locationType}
                   required
                 >
-                  <option value="">Select location</option>
-                  {locationsList.map((loc) => (
-                    <option key={loc._id} value={loc._id}>
-                      {[loc.areaName, loc.building, loc.floor].filter(Boolean).join(' / ') || loc.code || loc._id}
-                    </option>
-                  ))}
+                  <option value="">{locationType ? 'Select location' : 'Select type first'}</option>
+                  {(() => {
+                    const getType = (loc) => String(loc?.locationType || 'OTHER').toUpperCase()
+                    const getZoneName = (loc) => (loc?.parent?.areaName ?? (loc?.parent && typeof loc.parent === 'object' ? loc.parent.areaName : null))
+                    const getLabel = (loc) => ([loc?.areaName, loc?.building, loc?.floor].filter(Boolean).join(' / ') || loc?.code || loc?._id || '—')
+                    const list = (Array.isArray(locationsList) ? locationsList : []).filter((loc) => getType(loc) === locationType)
+                    list.sort((a, b) => String(a?.areaName || '').localeCompare(String(b?.areaName || '')))
+                    return list.map((loc) => {
+                      const zoneName = getZoneName(loc)
+                      const baseLabel = getLabel(loc)
+                      const fullLabel = zoneName ? `${baseLabel} (${zoneName})` : baseLabel
+                      return (
+                        <option key={loc._id} value={loc._id}>
+                          {fullLabel}
+                        </option>
+                      )
+                    })
+                  })()}
                 </select>
               </div>
               <div className="space-y-1.5">

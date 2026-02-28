@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { apiClient } from '../../api/client'
 
 const LOCATION_TYPES = ['ZONE', 'FLOOR', 'WARD', 'ROOM', 'UNIT', 'OTHER']
@@ -25,6 +25,7 @@ const emptyForm = {
   areaName: '',
   code: '',
   locationType: 'ZONE',
+  parentId: '',
   zone: '',
   floor: '',
   building: '',
@@ -40,10 +41,36 @@ export function LocationManagement() {
   const [formData, setFormData] = useState(emptyForm)
   const [filterType, setFilterType] = useState('')
   const [message, setMessage] = useState({ text: '', type: '' })
+  const [floorsUnderZone, setFloorsUnderZone] = useState([])
+  const [loadingFloors, setLoadingFloors] = useState(false)
 
   useEffect(() => {
     loadLocations()
   }, [])
+
+  // Fetch floors under the selected zone from DB (no hardcoded list)
+  useEffect(() => {
+    if (!formData.parentId) {
+      setFloorsUnderZone([])
+      return
+    }
+    let cancelled = false
+    setLoadingFloors(true)
+    apiClient
+      .get(`/locations?parentId=${formData.parentId}&isActive=true`)
+      .then((data) => {
+        if (cancelled) return
+        const list = Array.isArray(data) ? data : []
+        setFloorsUnderZone(list.filter((loc) => loc.locationType === 'FLOOR'))
+      })
+      .catch(() => {
+        if (!cancelled) setFloorsUnderZone([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingFloors(false)
+      })
+    return () => { cancelled = true }
+  }, [formData.parentId])
 
   const showMsg = (text, type = 'success') => {
     setMessage({ text, type })
@@ -62,10 +89,16 @@ export function LocationManagement() {
     }
   }
 
+  const needsZoneFirst = ['FLOOR', 'WARD', 'ROOM', 'UNIT'].includes(formData.locationType)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.areaName.trim()) {
       showMsg('Area name is required', 'error')
+      return
+    }
+    if (needsZoneFirst && !formData.parentId) {
+      showMsg('Select a zone first. Floors and areas must belong to a zone.', 'error')
       return
     }
     try {
@@ -73,6 +106,7 @@ export function LocationManagement() {
         areaName: formData.areaName.trim(),
         code: formData.code.trim() || undefined,
         locationType: formData.locationType,
+        parentId: formData.parentId || undefined,
         zone: formData.zone.trim() || undefined,
         floor: formData.floor.trim() || undefined,
         building: formData.building.trim() || undefined,
@@ -96,10 +130,12 @@ export function LocationManagement() {
   }
 
   const handleEdit = (loc) => {
+    const parentId = loc.parent?._id ?? loc.parent ?? ''
     setFormData({
       areaName: loc.areaName || '',
       code: loc.code || '',
       locationType: loc.locationType || 'OTHER',
+      parentId: typeof parentId === 'string' ? parentId : (parentId?.toString?.() ?? ''),
       zone: loc.zone || '',
       floor: loc.floor || '',
       building: loc.building || '',
@@ -131,6 +167,12 @@ export function LocationManagement() {
     ? locations.filter((l) => l.locationType === filterType)
     : locations
 
+  // Zones only — for "Parent (Zone)" dropdown so a zone can have multiple floors
+  const zoneLocations = useMemo(
+    () => locations.filter((l) => l.locationType === 'ZONE'),
+    [locations]
+  )
+
   const getDisplayLabel = (loc) => {
     const parts = [
       loc.zone && `Zone: ${loc.zone}`,
@@ -140,13 +182,19 @@ export function LocationManagement() {
     return parts.length > 0 ? parts.join(' · ') : null
   }
 
+  const getParentName = (loc) => {
+    const p = loc.parent
+    if (!p) return null
+    return typeof p === 'object' && p.areaName ? p.areaName : null
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-4 sm:py-5">
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Location Management</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage audit locations — Zones (A, B, C), Floors, Wards, Rooms, Units. These appear as dropdowns when submitting a checklist.
+          <strong>Select zone first, then create.</strong> Create zones (e.g. Zone A, B, C), then add floors and areas under each zone. Locations appear when submitting checklists.
         </p>
       </div>
 
@@ -197,24 +245,19 @@ export function LocationManagement() {
         <h3 className="text-lg font-semibold text-slate-800 mb-4">
           {editingId ? '✏️ Edit Location' : '➕ Add New Location'}
         </h3>
+        {needsZoneFirst && zoneLocations.length === 0 && !editingId && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            Create a <strong>Zone</strong> first (e.g. Zone A, Zone B). Then you can add floors and areas under that zone.
+          </div>
+        )}
+        {formData.locationType === 'ZONE' && !editingId && zoneLocations.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <strong>To add an underzone</strong> (floor/area under a zone): change Location Type to <strong>Floor</strong>, <strong>Ward</strong>, <strong>Room</strong> or <strong>Unit</strong> — then you’ll see “Select zone first” and can pick the parent zone.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Area Name */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Area Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.areaName}
-                onChange={(e) => setFormData({ ...formData, areaName: e.target.value })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
-                placeholder="e.g. Zone A, Ground Floor, ICU Ward"
-                required
-              />
-            </div>
-
-            {/* Location Type */}
+            {/* Location Type — choose first */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Location Type</label>
               <select
@@ -228,6 +271,48 @@ export function LocationManagement() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Under zone — select parent zone when adding Floor/Ward/Room/Unit */}
+            {needsZoneFirst && (
+              <div className={zoneLocations.length === 0 ? 'md:col-span-2' : ''}>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Under zone (parent) <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.parentId || ''}
+                  onChange={(e) => setFormData({ ...formData, parentId: e.target.value, floor: '' })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 ${
+                    needsZoneFirst && !formData.parentId ? 'border-amber-400 bg-amber-50/50' : 'border-slate-300'
+                  }`}
+                  required={needsZoneFirst}
+                >
+                  <option value="">— Choose a zone —</option>
+                  {zoneLocations.map((z) => (
+                    <option key={z._id} value={z._id}>
+                      {z.areaName} {z.zone ? `(${z.zone})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">
+                  This location will appear under the selected zone. Pick the zone first, then enter the area name below.
+                </p>
+              </div>
+            )}
+
+            {/* Area Name */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Area Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.areaName}
+                onChange={(e) => setFormData({ ...formData, areaName: e.target.value })}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
+                placeholder={formData.locationType === 'ZONE' ? 'e.g. Zone A, Zone B' : 'e.g. Floor 1, Ground Floor, ICU Ward'}
+                required
+              />
             </div>
 
             {/* Short Code */}
@@ -259,18 +344,55 @@ export function LocationManagement() {
               />
             </div>
 
-            {/* Floor */}
+            {/* Floor: when WARD/ROOM/UNIT — select floor (from DB). When FLOOR — you are creating the floor, name it in Area Name. */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Floor <span className="text-xs text-slate-500">(e.g. 1st Floor)</span>
+                Floor <span className="text-xs text-slate-500">
+                  {formData.locationType === 'FLOOR' ? '(optional label, e.g. 1 or Ground)' : '(select floor under zone)'}
+                </span>
               </label>
-              <input
-                type="text"
-                value={formData.floor}
-                onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
-                placeholder="Ground Floor, 1st Floor…"
-              />
+              {formData.locationType === 'FLOOR' ? (
+                <input
+                  type="text"
+                  value={formData.floor}
+                  onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
+                  placeholder="e.g. 1, Ground, 2nd"
+                />
+              ) : formData.parentId ? (
+                <>
+                  <select
+                    value={formData.floor}
+                    onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
+                    disabled={loadingFloors}
+                  >
+                    <option value="">— Select floor —</option>
+                    {formData.floor && !floorsUnderZone.some((l) => (l.areaName ?? l.floor) === formData.floor) && (
+                      <option value={formData.floor}>{formData.floor}</option>
+                    )}
+                    {floorsUnderZone.map((loc) => {
+                      const val = loc.areaName ?? loc.floor ?? ''
+                      return (
+                        <option key={loc._id} value={val}>
+                          {loc.areaName || loc.floor || loc.code || loc._id}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  {floorsUnderZone.length === 0 && !loadingFloors && (
+                    <p className="mt-1 text-xs text-slate-500">No floors under this zone yet. Add a floor (Location Type = Floor) under this zone first.</p>
+                  )}
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.floor}
+                  readOnly
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 text-slate-500"
+                  placeholder="Select zone first, then select floor"
+                />
+              )}
             </div>
 
             {/* Building / Block */}
@@ -381,6 +503,7 @@ export function LocationManagement() {
                   <th className="text-left p-3 font-semibold text-slate-700 w-8">#</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Area Name</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Type</th>
+                  <th className="text-left p-3 font-semibold text-slate-700">Under zone</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Zone / Floor / Block</th>
                   <th className="text-left p-3 font-semibold text-slate-700">Code</th>
                   <th className="text-center p-3 font-semibold text-slate-700">Order</th>
@@ -402,6 +525,13 @@ export function LocationManagement() {
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-medium">
                         {LOCATION_TYPE_ICONS[loc.locationType] || '📌'} {loc.locationType || 'OTHER'}
                       </span>
+                    </td>
+                    <td className="p-3 text-xs text-slate-600">
+                      {getParentName(loc) ? (
+                        <span className="text-maroon-700 font-medium">└ {getParentName(loc)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="p-3 text-xs text-slate-600">
                       {getDisplayLabel(loc) || <span className="text-slate-400">—</span>}

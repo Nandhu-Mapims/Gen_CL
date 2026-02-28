@@ -1,5 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { apiClient } from '../../api/client'
+
+// Build hierarchy: top-level departments and their sub-departments (for form-under-sub-department selection)
+function useDepartmentHierarchy(departments) {
+  return useMemo(() => {
+    const list = Array.isArray(departments) ? departments : []
+    const topLevel = list.filter((d) => !d.parent)
+    const childrenOf = {}
+    list.filter((d) => d.parent).forEach((d) => {
+      const pid = d.parent?._id ?? d.parent
+      if (!pid) return
+      const key = typeof pid === 'object' ? pid.toString() : String(pid)
+      if (!childrenOf[key]) childrenOf[key] = []
+      childrenOf[key].push(d)
+    })
+    return { topLevel, childrenOf }
+  }, [departments])
+}
 
 export function FormTemplateManagement() {
   const [forms, setForms] = useState([])
@@ -126,6 +143,8 @@ export function FormTemplateManagement() {
     }
   }
 
+  const { topLevel, childrenOf } = useDepartmentHierarchy(departments)
+
   const getFormDepartments = (form) => {
     return form.departments?.map((d) => (typeof d === 'object' ? d : null)).filter(Boolean) || []
   }
@@ -197,7 +216,7 @@ export function FormTemplateManagement() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Form belongs to department (for analytics) <span className="text-red-500">*</span>
+                Form belongs to department or sub-department <span className="text-red-500">*</span>
               </label>
               <select
                 required
@@ -205,17 +224,30 @@ export function FormTemplateManagement() {
                 onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
               >
-                <option value="">Select department</option>
-                {departments
+                <option value="">Select overall department or specific sub-department</option>
+                {topLevel
                   .filter((d) => d.isActive !== false)
-                  .map((dept) => (
-                    <option key={dept._id} value={dept._id}>
-                      {dept.name} ({dept.code})
-                    </option>
-                  ))}
+                  .map((parent) => {
+                    const subs = childrenOf[String(parent._id)] ?? []
+                    return (
+                      <optgroup key={parent._id} label={parent.name}>
+                        <option value={parent._id}>
+                          {parent.name} ({parent.code}) — overall
+                        </option>
+                        {subs
+                          .filter((s) => s.isActive !== false)
+                          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                          .map((sub) => (
+                            <option key={sub._id} value={sub._id}>
+                              └ {sub.name} ({sub.code})
+                            </option>
+                          ))}
+                      </optgroup>
+                    )
+                  })}
               </select>
               <p className="text-xs text-slate-500 mt-1">
-                Required for analytics — labels which department this form is for. User assignment is done in Configure → Assign Forms.
+                Create the form under the overall department or a specific sub-department. User assignment in Configure → Assign Forms.
               </p>
             </div>
 

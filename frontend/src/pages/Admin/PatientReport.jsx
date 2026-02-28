@@ -26,7 +26,7 @@ export function PatientReport() {
   useEffect(() => {
     Promise.all([
       apiClient.get('/departments').then((d) => Array.isArray(d) ? d : []).catch(() => []),
-      apiClient.get('/locations').then((d) => Array.isArray(d) ? d : []).catch(() => []),
+      apiClient.get('/locations?selectable=true').then((d) => Array.isArray(d) ? d : []).catch(() => []),
       apiClient.get('/shifts').then((d) => Array.isArray(d) ? d : []).catch(() => []),
     ]).then(([depts, locs, shfts]) => {
       setDepartments(depts)
@@ -663,9 +663,15 @@ export function PatientReport() {
                     className="w-full border-2 border-slate-300 rounded-lg px-4 py-3 text-base focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
                   >
                     <option value="">All locations</option>
-                    {locationsList.map((loc) => (
-                      <option key={loc._id} value={loc._id}>{loc.areaName || loc.name}</option>
-                    ))}
+                    {locationsList.map((loc) => {
+                      const zoneName = loc.parent?.areaName ?? (loc.parent && typeof loc.parent === 'object' ? loc.parent.areaName : null)
+                      const name = loc.areaName || loc.name || ''
+                      return (
+                        <option key={loc._id} value={loc._id}>
+                          {zoneName ? `${name} (${zoneName})` : name}
+                        </option>
+                      )
+                    })}
                   </select>
                 </div>
                 <div>

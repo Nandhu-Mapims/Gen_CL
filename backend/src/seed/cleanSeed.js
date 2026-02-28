@@ -1,9 +1,9 @@
 /**
- * Full Clean Seed
+ * Full Clean Seed — fresh data only
  * ──────────────────────────────────────────────────────
- *  Wipes everything and seeds:
- *   • 6 departments
- *   • 1 Super Admin, 1 QA, 3 Supervisors, 3 Staff
+ *  Wipes all data and seeds:
+ *   • Departments: Housekeeping (8 sub) + Infection Control (6 sub) + Engineering & Maintenance (7 sub)
+ *   • 1 Super Admin, 1 QA, 3 Supervisors, 3 Staff (HK, ICD, EMD)
  *   • 10 Locations, 3 Shifts
  *   • 3 Form templates + checklist items (assigned to users)
  *   • 7 days of realistic audit submissions
@@ -53,40 +53,68 @@ const pick     = (arr, n) => [...arr].sort(() => 0.5 - Math.random()).slice(0, n
 
 const PASSWORD = 'TataTiago@2026';
 
+// Fresh data: only these 3 departments + sub-domains (no Quality / general departments)
 const DEPARTMENTS = [
-  { name: 'General Medicine',   code: 'GM'      },
-  { name: 'General Surgery',    code: 'GS'      },
-  { name: 'Orthopedics',        code: 'ORTHO'   },
-  { name: 'Pediatrics',         code: 'PED'     },
-  { name: 'Nursing Services',   code: 'NUS'     },
-  { name: 'Quality Department', code: 'QUALITY' },
+  // 2. Housekeeping Department + sub-domains
+  { name: 'Housekeeping Department',     code: 'HK'       },
+  { name: 'Ward Cleaning Unit',          code: 'HK-WCU',  parentCode: 'HK' },
+  { name: 'ICU Cleaning Unit',           code: 'HK-ICU',  parentCode: 'HK' },
+  { name: 'OT Cleaning Unit',            code: 'HK-OTC',  parentCode: 'HK' },
+  { name: 'Lift & Public Area Cleaning', code: 'HK-LPA',  parentCode: 'HK' },
+  { name: 'Toilet & Washroom Cleaning',  code: 'HK-TWC',  parentCode: 'HK' },
+  { name: 'Linen Management',            code: 'HK-LM',   parentCode: 'HK' },
+  { name: 'Biomedical Waste Handling',   code: 'HK-BWH',  parentCode: 'HK' },
+  { name: 'Pest Control Unit',           code: 'HK-PCU',  parentCode: 'HK' },
+
+  // 3. Infection Control Department + sub-domains
+  { name: 'Infection Control Department', code: 'ICD'      },
+  { name: 'HAI Surveillance',             code: 'ICD-HAI', parentCode: 'ICD' },
+  { name: 'Hand Hygiene Monitoring',      code: 'ICD-HHM', parentCode: 'ICD' },
+  { name: 'CSSD Monitoring',              code: 'ICD-CSSD', parentCode: 'ICD' },
+  { name: 'Isolation Room Monitoring',    code: 'ICD-IRM', parentCode: 'ICD' },
+  { name: 'Antibiotic Stewardship',       code: 'ICD-AS',  parentCode: 'ICD' },
+  { name: 'Outbreak Management',          code: 'ICD-OM',  parentCode: 'ICD' },
+
+  // 4. Engineering & Maintenance Department + sub-domains
+  { name: 'Engineering & Maintenance Department', code: 'EMD'       },
+  { name: 'Electrical Maintenance',       code: 'EMD-EM',   parentCode: 'EMD' },
+  { name: 'Lift Maintenance',             code: 'EMD-LM',   parentCode: 'EMD' },
+  { name: 'HVAC / Air Conditioning',      code: 'EMD-HVAC', parentCode: 'EMD' },
+  { name: 'Plumbing',                     code: 'EMD-PL',   parentCode: 'EMD' },
+  { name: 'Fire Safety Systems',          code: 'EMD-FSS',  parentCode: 'EMD' },
+  { name: 'Generator & Power Backup',     code: 'EMD-GPB',  parentCode: 'EMD' },
+  { name: 'Civil Maintenance',            code: 'EMD-CM',   parentCode: 'EMD' },
 ];
 
 const SUPERVISORS = [
-  { name: 'Rajesh Kumar',  deptCode: 'GM',    designation: 'Unit Supervisor' },
-  { name: 'Priya Sharma',  deptCode: 'GS',    designation: 'Unit Supervisor' },
-  { name: 'Amit Patel',    deptCode: 'ORTHO', designation: 'Department Head' },
+  { name: 'Rajesh Kumar',  deptCode: 'HK',   designation: 'Unit Supervisor' },
+  { name: 'Priya Sharma',  deptCode: 'ICD',  designation: 'Unit Supervisor' },
+  { name: 'Amit Patel',    deptCode: 'EMD',  designation: 'Department Head' },
 ];
 
 const STAFF = [
-  { name: 'Meera Joseph', deptCode: 'GM',    designation: 'Staff Auditor' },
-  { name: 'Suresh Kumar', deptCode: 'GS',    designation: 'Staff Auditor' },
-  { name: 'Divya Menon',  deptCode: 'ORTHO', designation: 'Quality Auditor' },
+  { name: 'Meera Joseph', deptCode: 'HK',   designation: 'Staff Auditor' },
+  { name: 'Suresh Kumar', deptCode: 'ICD',  designation: 'Staff Auditor' },
+  { name: 'Divya Menon',  deptCode: 'EMD',  designation: 'Quality Auditor' },
 ];
 
-// ─── Locations ─────────────────────────────────────────────────────────────────
+// ─── Locations (Zone → multiple Floors hierarchy) ───────────────────────────────
+// Top-level zones first; floors belong to a zone via parent.
 
-const LOCATIONS = [
-  { areaName: 'Zone A',   locationType: 'ZONE',  zone: 'A', order: 1 },
-  { areaName: 'Zone B',   locationType: 'ZONE',  zone: 'B', order: 2 },
-  { areaName: 'Zone C',   locationType: 'ZONE',  zone: 'C', order: 3 },
-  { areaName: 'Floor 1',  locationType: 'FLOOR', floor: '1', order: 4 },
-  { areaName: 'Floor 2',  locationType: 'FLOOR', floor: '2', order: 5 },
-  { areaName: 'Floor 3',  locationType: 'FLOOR', floor: '3', order: 6 },
-  { areaName: 'Ward A',   locationType: 'WARD',  order: 7 },
-  { areaName: 'Ward B',   locationType: 'WARD',  order: 8 },
-  { areaName: 'ICU',      locationType: 'UNIT',  order: 9 },
-  { areaName: 'OT Block', locationType: 'UNIT',  order: 10 },
+const LOCATIONS_TOP = [
+  { areaName: 'Zone A', locationType: 'ZONE', zone: 'A', order: 1 },
+  { areaName: 'Zone B', locationType: 'ZONE', zone: 'B', order: 2 },
+  { areaName: 'Zone C', locationType: 'ZONE', zone: 'C', order: 3 },
+];
+
+const LOCATIONS_WITH_PARENT = [
+  { areaName: 'Floor 1', locationType: 'FLOOR', floor: '1', order: 4, parentZoneCode: 'A' },
+  { areaName: 'Floor 2', locationType: 'FLOOR', floor: '2', order: 5, parentZoneCode: 'A' },
+  { areaName: 'Floor 3', locationType: 'FLOOR', floor: '3', order: 6, parentZoneCode: 'A' },
+  { areaName: 'Ward A', locationType: 'WARD', order: 7 },
+  { areaName: 'Ward B', locationType: 'WARD', order: 8 },
+  { areaName: 'ICU', locationType: 'UNIT', order: 9 },
+  { areaName: 'OT Block', locationType: 'UNIT', order: 10 },
 ];
 
 // ─── Shifts ─────────────────────────────────────────────────────────────────────
@@ -98,104 +126,77 @@ const SHIFTS = [
 ];
 
 // ─── Form definitions ──────────────────────────────────────────────────────────
-// Each form is scoped to exactly ONE department.
+// Each form is scoped to exactly ONE department (Housekeeping, Infection Control, Engineering & Maintenance).
 
 const FORMS = [
   {
-    key: 'DAILY',
-    name: 'General Medicine Daily Checklist',
-    description: 'Daily quality audit checklist for the General Medicine department.',
-    deptCodes: ['GM'],
+    key: 'HOUSEKEEPING',
+    name: 'Housekeeping Department Checklist',
+    description: 'Daily audit for Housekeeping: ward cleaning, ICU/OT cleaning, linen, biomedical waste, pest control.',
+    deptCodes: ['HK'],
     isCommon: false,
     sections: [
-      { name: 'Hand Hygiene & Infection Control', order: 1 },
-      { name: 'Patient Safety & Documentation',  order: 2 },
-      { name: 'Equipment & Environment',         order: 3 },
+      { name: 'Ward & Unit Cleaning',     order: 1 },
+      { name: 'Linen & Waste',            order: 2 },
+      { name: 'Public Areas & Pest Control', order: 3 },
     ],
     items: [
-      { label: 'Hand hygiene practiced before and after patient contact',          section: 'Hand Hygiene & Infection Control', order: 1, isMandatory: true  },
-      { label: 'Alcohol-based hand rub available at point of care',                section: 'Hand Hygiene & Infection Control', order: 2, isMandatory: true  },
-      { label: 'PPE worn appropriately during procedures',                         section: 'Hand Hygiene & Infection Control', order: 3                     },
-      { label: 'Sharps disposed in puncture-proof containers',                     section: 'Hand Hygiene & Infection Control', order: 4, isMandatory: true  },
-      { label: 'Bio-medical waste bins colour-coded and labelled correctly',       section: 'Hand Hygiene & Infection Control', order: 5                     },
-      { label: 'Patient identification (wristband / ID card) in place',            section: 'Patient Safety & Documentation',  order: 1, isMandatory: true  },
-      { label: 'Consent forms signed before procedures',                           section: 'Patient Safety & Documentation',  order: 2, isMandatory: true  },
-      { label: 'Medication orders legibly written and signed',                     section: 'Patient Safety & Documentation',  order: 3, isMandatory: true  },
-      { label: 'Adverse events / near-miss incidents reported promptly',           section: 'Patient Safety & Documentation',  order: 4                     },
-      { label: 'Fall risk assessment completed for all admitted cases',            section: 'Patient Safety & Documentation',  order: 5                     },
-      { label: 'Emergency trolley / crash cart stocked and seal intact',           section: 'Equipment & Environment',         order: 1, isMandatory: true  },
-      { label: 'Medical equipment cleaned and maintained as per schedule',         section: 'Equipment & Environment',         order: 2                     },
-      { label: 'Adequate lighting available in all care areas',                    section: 'Equipment & Environment',         order: 3                     },
-      { label: 'Fire extinguishers accessible and within expiry date',             section: 'Equipment & Environment',         order: 4                     },
-      { label: 'Walkways and exits free from obstructions',                        section: 'Equipment & Environment',         order: 5                     },
+      { label: 'Ward cleaning completed as per schedule',                          section: 'Ward & Unit Cleaning',     order: 1, isMandatory: true  },
+      { label: 'ICU cleaning protocol followed and documented',                    section: 'Ward & Unit Cleaning',     order: 2, isMandatory: true  },
+      { label: 'OT cleaning and fumigation as per protocol',                       section: 'Ward & Unit Cleaning',     order: 3, isMandatory: true  },
+      { label: 'Lift and public area cleaning completed',                          section: 'Ward & Unit Cleaning',     order: 4, isMandatory: true  },
+      { label: 'Toilet and washroom cleaning done and disinfectant used',          section: 'Ward & Unit Cleaning',     order: 5, isMandatory: true  },
+      { label: 'Linen management: collection, laundering, distribution as per SOP', section: 'Linen & Waste',            order: 1, isMandatory: true  },
+      { label: 'Biomedical waste segregated, colour-coded bins in place',           section: 'Linen & Waste',            order: 2, isMandatory: true  },
+      { label: 'BMW handed over to authorised agency and record maintained',       section: 'Linen & Waste',            order: 3, isMandatory: true  },
+      { label: 'Pest control schedule followed and log maintained',                 section: 'Public Areas & Pest Control', order: 1, isMandatory: true  },
+      { label: 'No pest infestation observed in audited area',                     section: 'Public Areas & Pest Control', order: 2                     },
     ],
   },
   {
-    key: 'NURSING',
-    name: 'Nursing Services Audit',
-    description: 'Daily nursing quality and care standards audit for Nursing Services department.',
-    deptCodes: ['NUS'],
+    key: 'INFECTION',
+    name: 'Infection Control Department Checklist',
+    description: 'Audit for HAI surveillance, hand hygiene, CSSD, isolation, antibiotic stewardship, outbreak management.',
+    deptCodes: ['ICD'],
     isCommon: false,
     sections: [
-      { name: 'Nursing Care Standards',    order: 1 },
-      { name: 'Medication Administration', order: 2 },
+      { name: 'Surveillance & Hand Hygiene', order: 1 },
+      { name: 'CSSD & Isolation',            order: 2 },
+      { name: 'Stewardship & Outbreak',       order: 3 },
     ],
     items: [
-      { label: 'Nursing notes updated every shift',                                section: 'Nursing Care Standards',    order: 1, isMandatory: true  },
-      { label: 'Vital signs recorded at prescribed intervals',                     section: 'Nursing Care Standards',    order: 2, isMandatory: true  },
-      { label: 'Bedridden patients repositioned every 2 hours',                   section: 'Nursing Care Standards',    order: 3                     },
-      { label: 'IV lines, catheters and tubes labelled with insertion date',       section: 'Nursing Care Standards',    order: 4, isMandatory: true  },
-      { label: 'Call bell within reach of every patient',                          section: 'Nursing Care Standards',    order: 5                     },
-      { label: '5 Rights of medication administration followed',                   section: 'Medication Administration', order: 1, isMandatory: true  },
-      { label: 'High-alert medications stored in locked area with clear label',    section: 'Medication Administration', order: 2, isMandatory: true  },
-      { label: 'Expired medications removed from shelves',                         section: 'Medication Administration', order: 3, isMandatory: true  },
-      { label: 'Drug allergies documented and communicated to the team',           section: 'Medication Administration', order: 4, isMandatory: true  },
+      { label: 'HAI surveillance data collected and reported as per protocol',    section: 'Surveillance & Hand Hygiene', order: 1, isMandatory: true  },
+      { label: 'Hand hygiene monitoring completed and compliance recorded',        section: 'Surveillance & Hand Hygiene', order: 2, isMandatory: true  },
+      { label: 'Alcohol-based hand rub available at point of care',                section: 'Surveillance & Hand Hygiene', order: 3, isMandatory: true  },
+      { label: 'CSSD monitoring: sterilisation cycle and biological indicators',   section: 'CSSD & Isolation',            order: 1, isMandatory: true  },
+      { label: 'Isolation room monitoring: negative pressure and PPE compliance',  section: 'CSSD & Isolation',            order: 2, isMandatory: true  },
+      { label: 'Isolation precautions signage and supplies in place',              section: 'CSSD & Isolation',            order: 3                     },
+      { label: 'Antibiotic stewardship: restricted antibiotics as per policy',      section: 'Stewardship & Outbreak',       order: 1, isMandatory: true  },
+      { label: 'Outbreak management protocol documented and accessible',          section: 'Stewardship & Outbreak',       order: 2, isMandatory: true  },
+      { label: 'Outbreak log updated when applicable',                             section: 'Stewardship & Outbreak',       order: 3                     },
     ],
   },
   {
-    key: 'SURGICAL',
-    name: 'Surgical Department Checklist',
-    description: 'Pre/post-operative and OT quality standards audit for General Surgery.',
-    deptCodes: ['GS'],
+    key: 'ENGINEERING',
+    name: 'Engineering & Maintenance Department Checklist',
+    description: 'Audit for electrical, lift, HVAC, plumbing, fire safety, generator, civil maintenance.',
+    deptCodes: ['EMD'],
     isCommon: false,
     sections: [
-      { name: 'Pre-Operative Checks',           order: 1 },
-      { name: 'OT Environment & Sterilisation', order: 2 },
+      { name: 'Electrical & Lift',     order: 1 },
+      { name: 'HVAC, Plumbing & Civil', order: 2 },
+      { name: 'Fire Safety & Power Backup', order: 3 },
     ],
     items: [
-      { label: 'Surgical Safety Checklist (WHO) completed before incision',       section: 'Pre-Operative Checks',           order: 1, isMandatory: true  },
-      { label: 'Site marking verified by surgeon before OT',                      section: 'Pre-Operative Checks',           order: 2, isMandatory: true  },
-      { label: 'Patient identity and consent verified in OT',                     section: 'Pre-Operative Checks',           order: 3, isMandatory: true  },
-      { label: 'Anaesthesia machine checked before first case of the day',        section: 'Pre-Operative Checks',           order: 4, isMandatory: true  },
-      { label: 'Blood availability confirmed for high-risk surgeries',            section: 'Pre-Operative Checks',           order: 5                     },
-      { label: 'OT cleaned and fumigated as per schedule',                        section: 'OT Environment & Sterilisation', order: 1, isMandatory: true  },
-      { label: 'Instruments sterilised and CSSD record maintained',               section: 'OT Environment & Sterilisation', order: 2, isMandatory: true  },
-      { label: 'OT temperature and humidity within prescribed range',             section: 'OT Environment & Sterilisation', order: 3                     },
-      { label: 'Instrument count (sponge / needle) documented',                   section: 'OT Environment & Sterilisation', order: 4, isMandatory: true  },
-    ],
-  },
-  {
-    key: 'ORTHO',
-    name: 'Orthopedics Quality Checklist',
-    description: 'Quality and safety standards audit specific to the Orthopedics department.',
-    deptCodes: ['ORTHO'],
-    isCommon: false,
-    sections: [
-      { name: 'Pre-Operative Checks',           order: 1 },
-      { name: 'Post-Operative & Rehabilitation', order: 2 },
-      { name: 'Equipment & Sterilisation',       order: 3 },
-    ],
-    items: [
-      { label: 'Surgical Safety Checklist completed before orthopaedic procedure', section: 'Pre-Operative Checks',            order: 1, isMandatory: true  },
-      { label: 'Implant / prosthesis verified against surgical plan',              section: 'Pre-Operative Checks',            order: 2, isMandatory: true  },
-      { label: 'Patient allergy to metal / latex checked and documented',          section: 'Pre-Operative Checks',            order: 3, isMandatory: true  },
-      { label: 'Tourniquet time recorded and within safe limit',                   section: 'Pre-Operative Checks',            order: 4                     },
-      { label: 'Post-operative neurovascular checks performed and documented',     section: 'Post-Operative & Rehabilitation', order: 1, isMandatory: true  },
-      { label: 'DVT prophylaxis prescribed and administered as per protocol',      section: 'Post-Operative & Rehabilitation', order: 2, isMandatory: true  },
-      { label: 'Physiotherapy referral made within 24 hrs of surgery',             section: 'Post-Operative & Rehabilitation', order: 3                     },
-      { label: 'Wound dressing changed as per scheduled interval',                 section: 'Post-Operative & Rehabilitation', order: 4, isMandatory: true  },
-      { label: 'Orthopaedic instruments cleaned and sterilised after each use',    section: 'Equipment & Sterilisation',       order: 1, isMandatory: true  },
-      { label: 'C-arm / imaging equipment functional and calibrated',              section: 'Equipment & Sterilisation',       order: 2                     },
+      { label: 'Electrical maintenance schedule followed and log maintained',      section: 'Electrical & Lift',     order: 1, isMandatory: true  },
+      { label: 'Lift maintenance and safety check as per schedule',                 section: 'Electrical & Lift',     order: 2, isMandatory: true  },
+      { label: 'HVAC / air conditioning functioning and filters checked',          section: 'HVAC, Plumbing & Civil', order: 1, isMandatory: true  },
+      { label: 'Plumbing: no leaks, water supply adequate in audited area',        section: 'HVAC, Plumbing & Civil', order: 2, isMandatory: true  },
+      { label: 'Civil maintenance: no structural hazards or water seepage',        section: 'HVAC, Plumbing & Civil', order: 3                     },
+      { label: 'Fire safety systems: extinguishers, hydrants, alarms in working order', section: 'Fire Safety & Power Backup', order: 1, isMandatory: true  },
+      { label: 'Fire drill and evacuation plan updated and displayed',             section: 'Fire Safety & Power Backup', order: 2, isMandatory: true  },
+      { label: 'Generator and power backup tested and log maintained',             section: 'Fire Safety & Power Backup', order: 3, isMandatory: true  },
+      { label: 'UPS and critical equipment on backup power as per plan',            section: 'Fire Safety & Power Backup', order: 4                     },
     ],
   },
 ];
@@ -256,10 +257,27 @@ async function run() {
 
   // ── 2. Departments ──────────────────────────────────────────────────────────
   console.log('🏥  Departments...');
-  const deptDocs = await Department.insertMany(DEPARTMENTS.map(d => ({ ...d, isActive: true })));
+
+  // First pass: insert top-level departments (no parent)
+  const topLevel = DEPARTMENTS.filter(d => !d.parentCode);
+  const topDocs  = await Department.insertMany(topLevel.map(d => ({ name: d.name, code: d.code, isActive: true })));
   const deptByCode = {};
-  deptDocs.forEach(d => { deptByCode[d.code] = d; });
-  console.log(`   ${deptDocs.length} departments created.`);
+  topDocs.forEach(d => { deptByCode[d.code] = d; });
+
+  // Second pass: insert sub-departments with resolved parent ObjectId
+  const subLevel = DEPARTMENTS.filter(d => d.parentCode);
+  const subDocs  = await Department.insertMany(
+    subLevel.map(d => ({
+      name: d.name,
+      code: d.code,
+      parent: deptByCode[d.parentCode]?._id || null,
+      isActive: true,
+    }))
+  );
+  subDocs.forEach(d => { deptByCode[d.code] = d; });
+
+  const deptDocs = [...topDocs, ...subDocs];
+  console.log(`   ${deptDocs.length} departments created (${topDocs.length} top-level, ${subDocs.length} sub-units).`);
 
   // ── 3. MasterData ───────────────────────────────────────────────────────────
   await MasterData.create({
@@ -269,12 +287,23 @@ async function run() {
     units: ['Unit 1', 'Unit 2', 'Unit 3'],
   });
 
-  // ── 4. Locations ────────────────────────────────────────────────────────────
+  // ── 4. Locations (zones top-level; floors/wards/units under zone where applicable) ─
   console.log('📍  Locations...');
-  const locDocs = await Location.insertMany(LOCATIONS.map(l => ({ ...l, isActive: true })));
+  const zoneDocs = await Location.insertMany(LOCATIONS_TOP.map(l => ({ ...l, isActive: true })));
+  const zoneByCode = {};
+  zoneDocs.forEach(l => { zoneByCode[l.zone] = l; });
   const locByName = {};
-  locDocs.forEach(l => { locByName[l.areaName] = l; });
-  console.log(`   ${locDocs.length} locations created.`);
+  zoneDocs.forEach(l => { locByName[l.areaName] = l; });
+  const withParent = LOCATIONS_WITH_PARENT.map(l => {
+    const { parentZoneCode, ...rest } = l;
+    const doc = { ...rest, isActive: true };
+    if (parentZoneCode && zoneByCode[parentZoneCode]) doc.parent = zoneByCode[parentZoneCode]._id;
+    return doc;
+  });
+  const childDocs = await Location.insertMany(withParent);
+  childDocs.forEach(l => { locByName[l.areaName] = l; });
+  const locDocs = [...zoneDocs, ...childDocs];
+  console.log(`   ${locDocs.length} locations created (${zoneDocs.length} zones, ${childDocs.length} under zones).`);
 
   // ── 5. Shifts ───────────────────────────────────────────────────────────────
   console.log('🕐  Shifts...');
@@ -293,13 +322,13 @@ async function run() {
   });
   console.log('   admin@hospital.com');
 
-  // ── 7. QA ────────────────────────────────────────────────────────────────────
+  // ── 7. QA (no department — global role) ───────────────────────────────────────
   console.log('🔍  QA...');
-  const qaUser = await User.create({
+  await User.create({
     name: 'QA Officer', email: 'qa@hospital.com',
     passwordHash: await hash(PASSWORD), role: 'QA',
     designation: 'Quality Officer',
-    department: deptByCode['QUALITY']._id, isActive: true,
+    department: null, isActive: true,
   });
   console.log('   qa@hospital.com');
 
@@ -338,23 +367,20 @@ async function run() {
 
   // ── 10. Form templates + checklist items ──────────────────────────────────────
   //
-  // Cross-audit assignments (staff only audit OTHER departments' forms):
-  //   GM  form  → audited by Suresh (GS) + Divya (ORTHO)
-  //   NUS form  → audited by Meera  (GM) + Suresh (GS)
-  //   GS  form  → audited by Meera  (GM) + Divya (ORTHO)
-  //   ORTHO form→ audited by Suresh (GS) + Meera  (GM)
+  // Cross-audit: staff from one dept audit another dept's form
+  //   HK form  → audited by ICD + EMD staff
+  //   ICD form → audited by HK + EMD staff
+  //   EMD form → audited by HK + ICD staff
   //
   console.log('\n📝  Forms & Checklist Items...');
   const formMap = {};     // key → FormTemplate doc
   const itemsMap = {};    // key → { deptCode → [ChecklistItem] }
 
-  // Explicit cross-department assignments per form key
-  // (populated after staffDocs are built)
+  // Cross-department assignments: staff from one dept can audit another dept's form
   const FORM_ASSIGNED_STAFF = {
-    DAILY:    ['GS', 'ORTHO'],  // GM form  → GS + ORTHO staff audit it
-    NURSING:  ['GM', 'GS'],     // NUS form → GM + GS staff audit it
-    SURGICAL: ['GM', 'ORTHO'],  // GS form  → GM + ORTHO staff audit it
-    ORTHO:    ['GS', 'GM'],     // ORTHO form → GS + GM staff audit it
+    HOUSEKEEPING: ['ICD', 'EMD'],
+    INFECTION:     ['HK', 'EMD'],
+    ENGINEERING:   ['HK', 'ICD'],
   };
 
   for (const formDef of FORMS) {
@@ -402,38 +428,33 @@ async function run() {
   // ── 11. Audit submissions (7 days of realistic data) ─────────────────────────
   console.log('\n📊  Generating audit submissions (7 days)...');
 
-  // Each submission plan: { staffCode, formKey, day, shift, location, noItemIndexes }
-  // noItemIndexes = which items should be answered NO (rest = YES)
-  // Cross-audit submissions:
-  //  staffCode   = who submits (their own dept is submission.department)
-  //  formKey     = which form template
-  //  itemDeptCode= which dept's checklist items to use (= form's single dept)
+  // Each submission plan: staffCode = who submits, formKey = form template, itemDeptCode = form's dept
   const submissionPlans = [
-    // Meera Joseph (GM) audits the GS Surgical Department Checklist
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 1, shiftName: 'Morning',   loc: 'OT Block', noAt: [1]    },
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 2, shiftName: 'Morning',   loc: 'OT Block', noAt: [5]    },
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 3, shiftName: 'Afternoon', loc: 'Floor 2',  noAt: []     },
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 4, shiftName: 'Morning',   loc: 'OT Block', noAt: [2, 7] },
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 5, shiftName: 'Morning',   loc: 'Zone C',   noAt: []     },
-    { staffCode: 'GM', formKey: 'SURGICAL', itemDeptCode: 'GS', day: 6, shiftName: 'Night',     loc: 'OT Block', noAt: []     },
+    // Meera (HK) audits Infection Control form
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 1, shiftName: 'Morning',   loc: 'Ward A',  noAt: [1]    },
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 2, shiftName: 'Morning',   loc: 'Ward B',  noAt: [4]    },
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 3, shiftName: 'Afternoon', loc: 'Floor 2',  noAt: []     },
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 4, shiftName: 'Morning',   loc: 'ICU',     noAt: [2, 7] },
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 5, shiftName: 'Morning',   loc: 'Zone C',   noAt: []     },
+    { staffCode: 'HK', formKey: 'INFECTION', itemDeptCode: 'ICD', day: 6, shiftName: 'Night',     loc: 'Ward A',  noAt: []     },
 
-    // Suresh Kumar (GS) audits the General Medicine Daily Checklist
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 1, shiftName: 'Morning',   loc: 'Zone A',  noAt: [4]    },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 2, shiftName: 'Morning',   loc: 'Ward A',  noAt: [2]    },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 3, shiftName: 'Afternoon', loc: 'Zone B',  noAt: []     },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 4, shiftName: 'Afternoon', loc: 'Floor 1', noAt: [9]    },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 5, shiftName: 'Morning',   loc: 'Zone A',  noAt: [3]    },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 6, shiftName: 'Morning',   loc: 'Ward B',  noAt: []     },
-    { staffCode: 'GS', formKey: 'DAILY', itemDeptCode: 'GM', day: 7, shiftName: 'Morning',   loc: 'Floor 1', noAt: []     },
+    // Suresh (ICD) audits Housekeeping form
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 1, shiftName: 'Morning',   loc: 'Zone A',  noAt: [4]    },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 2, shiftName: 'Morning',   loc: 'Ward A',  noAt: [2]    },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 3, shiftName: 'Afternoon', loc: 'Zone B',  noAt: []     },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 4, shiftName: 'Afternoon', loc: 'Floor 1', noAt: [9]    },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 5, shiftName: 'Morning',   loc: 'Zone A',  noAt: [3]    },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 6, shiftName: 'Morning',   loc: 'Ward B',  noAt: []     },
+    { staffCode: 'ICD', formKey: 'HOUSEKEEPING', itemDeptCode: 'HK', day: 7, shiftName: 'Morning',   loc: 'Floor 1', noAt: []     },
 
-    // Divya Menon (ORTHO) audits the Nursing Services Audit (NUS)
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 1, shiftName: 'Morning',   loc: 'Ward A',  noAt: []     },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 2, shiftName: 'Morning',   loc: 'Ward B',  noAt: [3, 6] },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 3, shiftName: 'Afternoon', loc: 'Floor 3', noAt: [7]    },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 4, shiftName: 'Morning',   loc: 'Ward A',  noAt: []     },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 5, shiftName: 'Morning',   loc: 'Zone A',  noAt: [1]    },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 6, shiftName: 'Night',     loc: 'Ward B',  noAt: []     },
-    { staffCode: 'ORTHO', formKey: 'NURSING', itemDeptCode: 'NUS', day: 7, shiftName: 'Afternoon', loc: 'Zone C',  noAt: []     },
+    // Divya (EMD) audits Engineering form
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 1, shiftName: 'Morning',   loc: 'OT Block', noAt: []     },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 2, shiftName: 'Morning',   loc: 'Floor 3',  noAt: [3, 6] },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 3, shiftName: 'Afternoon', loc: 'Zone C',   noAt: [7]    },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 4, shiftName: 'Morning',   loc: 'Ward A',  noAt: []     },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 5, shiftName: 'Morning',   loc: 'Zone A',  noAt: [1]    },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 6, shiftName: 'Night',     loc: 'Ward B',  noAt: []     },
+    { staffCode: 'EMD', formKey: 'ENGINEERING', itemDeptCode: 'EMD', day: 7, shiftName: 'Afternoon', loc: 'Zone C',  noAt: []     },
   ];
 
   let totalSubDocs = 0;
@@ -548,7 +569,7 @@ async function run() {
   for (const f of FORMS) {
     console.log(`    📝  ${f.name}  →  ${f.deptCodes[0]}`);
   }
-  console.log(`\n  Locations : ${LOCATIONS.map(l => l.areaName).join(', ')}`);
+  console.log(`\n  Locations : ${[...LOCATIONS_TOP, ...LOCATIONS_WITH_PARENT].map(l => l.areaName).join(', ')}`);
   console.log(`  Shifts    : Morning · Afternoon · Night`);
   console.log(`  Submissions: ${totalSubDocs} rows (${submissionPlans.length} sessions, 7 days)`);
   console.log(`  Actions   : ${actionCount} corrective/preventive`);
