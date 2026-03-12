@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api';
 
 export const apiClient = {
   async request(path, options = {}) {
