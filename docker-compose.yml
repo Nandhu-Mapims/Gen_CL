@@ -36,7 +36,7 @@ services:
       dockerfile: Dockerfile
     container_name: gen_cl_frontend
     ports:
-      - "80:80"
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
