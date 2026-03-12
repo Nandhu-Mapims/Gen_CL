@@ -1,0 +1,74 @@
+# Single-file production Compose for Hostinger Docker Manager
+# Use with: Compose from URL (GitHub repo) or Compose Manually (paste this YAML).
+#
+# Prerequisites on Hostinger:
+# 1. Deploy the Traefik project template first (so traefik-proxy network exists).
+# 2. Set environment variables in the Docker Manager UI (see README-HOSTINGER.md).
+#
+# Required env vars: DOMAIN (e.g. gencl.mapims.edu.in), CORS_ORIGIN, JWT_SECRET
+# Optional: MONGO_URI, HTTP_PORT (default 8082 — avoid 3000, 5000, 8085, 5010, 27017 used by other projects)
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: gen_cl_mongo
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+    # No host port — internal only (avoids conflict with mrd_cl's 27017)
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gen_cl_backend
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/gen_cl}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gen_cl_frontend
+    depends_on:
+      - backend
+    restart: always
+    # Safe host port so gencl doesn't conflict with ambulance_qr (8085,5010) or mrd_cl (3000,5000,27017)
+    ports:
+      - "${HTTP_PORT:-8082}:80"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.gencl.rule=Host(`${DOMAIN:-gencl.mapims.edu.in}`)
+      - traefik.http.routers.gencl.entrypoints=websecure
+      - traefik.http.routers.gencl.tls.certresolver=letsencrypt
+      - traefik.http.routers.gencl.service=frontend
+      - traefik.http.services.frontend.loadbalancer.server.port=80
+    networks:
+      - default
+      - traefik-proxy
+
+volumes:
+  mongo_data:
+
+networks:
+  traefik-proxy:
+    external: true
