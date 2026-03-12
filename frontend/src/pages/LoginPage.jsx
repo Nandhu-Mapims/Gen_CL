@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
@@ -43,7 +43,7 @@ export function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-maroon-200/50 overflow-hidden">
           <div className="bg-gradient-to-r from-maroon-600 to-maroon-700 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">Hospital Audit System</h1>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1">General Audit System</h1>
             <p className="text-maroon-100 text-xs sm:text-sm">Sign in to your account</p>
           </div>
           <form 
@@ -66,7 +66,7 @@ export function LoginPage() {
                 className="w-full border-2 border-maroon-200 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all bg-white shadow-sm"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@hospital.com"
+                placeholder="user@example.com"
                 autoComplete="off"
                 data-lpignore="true"
                 data-form-type="other"
@@ -117,11 +117,6 @@ export function LoginPage() {
             >
               {loading ? 'Logging in...' : 'Sign In'}
             </button>
-            <p className="mt-4 text-center">
-              <Link to="/change-password" className="text-maroon-600 hover:text-maroon-800 text-sm font-medium">
-                Change password
-              </Link>
-            </p>
           </form>
         </div>
       </div>

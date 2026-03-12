@@ -292,7 +292,7 @@ export function UserManagement() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500"
-                placeholder="user@hospital.com"
+                placeholder="user@example.com"
               />
             </div>
 

@@ -527,7 +527,7 @@ export function SimpleFormBuilder() {
         const msg = data?.message || 'Admin access required.'
         alert(
           `Error saving form: ${msg}\n\n` +
-          'Saving checklists requires an admin account. Log in as admin (e.g. admin@hospital.com) or log out and log in again to refresh your session.'
+          'Saving checklists requires an admin account. Log in as admin (e.g. admin@example.com) or log out and log in again to refresh your session.'
         )
         return
       }

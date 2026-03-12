@@ -357,10 +357,10 @@ export function Layout({ children }) {
               </span>
               <div className="hidden sm:block min-w-0">
                 <h1 className="text-base sm:text-lg font-semibold text-slate-900 truncate">
-                  Quality Audit Checklist
+                  General Audit Checklist
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Hospital Quality Control
+                  General Operations
                 </p>
               </div>
             </Link>
@@ -651,11 +651,11 @@ export function Layout({ children }) {
                     <div className="mb-6">
                       <img
                         src="/Logo-Checklist.png"
-                        alt="Quality Audit System"
+                        alt="General Audit System"
                         className="h-28 sm:h-36 w-auto object-contain mb-3 animate-logo-fade-in animate-logo-breathe animate-logo-glow"
                       />
                       <h2 className="text-xl font-semibold text-slate-900">
-                        Quality Audit System
+                        General Audit System
                       </h2>
                       <p className="text-sm text-slate-500 mt-1">
                         Secure login for Admin, Supervisor and Staff Auditors.
@@ -675,7 +675,7 @@ export function Layout({ children }) {
                   </div>
 
                   <div className="mt-8 text-xs text-slate-400">
-                    Need help? Contact your Quality Administrator.
+                    Need help? Contact your Administrator.
                   </div>
                 </div>
               )}
@@ -683,7 +683,7 @@ export function Layout({ children }) {
               {/* Footer */}
               <div className="p-4 border-t border-maroon-200 bg-gradient-to-r from-maroon-50/50 to-maroon-50/50">
                 <div className="text-xs text-maroon-600 text-center font-medium">
-                  Quality Audit System v1.0
+                  General Audit System v1.0
                 </div>
               </div>
             </div>

@@ -1280,7 +1280,7 @@ export function PatientReport() {
                 {/* Footer */}
                 <div className="mt-6 print:mt-4 pt-4 print:pt-3 border-t border-slate-300 text-center">
                   <p className="text-xs print:text-[9px] text-slate-600">
-                    Generated on {new Date().toLocaleString('en-GB')} | Hospital Audit System - Medical Records Department
+                    Generated on {new Date().toLocaleString('en-GB')} | General Audit System
                   </p>
                 </div>
               </div>

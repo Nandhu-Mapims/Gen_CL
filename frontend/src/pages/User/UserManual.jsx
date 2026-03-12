@@ -408,7 +408,7 @@ export function UserManual() {
       {/* Header */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-5 py-4 sm:py-5">
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">User Manual</h1>
-        <p className="mt-1 text-sm text-slate-600">Hospital Audit System - Quick Reference Guide</p>
+        <p className="mt-1 text-sm text-slate-600">General Audit System - Quick Reference Guide</p>
       </div>
 
       {/* Search Bar */}
@@ -487,7 +487,7 @@ export function UserManual() {
 
       {/* Footer */}
       <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 text-center text-sm text-slate-500">
-        Hospital Audit System • Medical Records Department • Last Updated: {new Date().toLocaleDateString('en-GB')}
+        General Audit System • Last Updated: {new Date().toLocaleDateString('en-GB')}
       </div>
     </div>
   )
