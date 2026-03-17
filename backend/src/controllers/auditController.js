@@ -46,31 +46,6 @@ exports.submitAudit = async (req, res) => {
     const auditDate = auditDateStr ? new Date(auditDateStr + 'T00:00:00.000Z') : new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     const auditTime = auditTimeStr || now.getUTCHours().toString().padStart(2, '0') + ':' + now.getUTCMinutes().toString().padStart(2, '0');
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const duplicateQuery = {
-      department: departmentForSubmission,
-      submittedBy: userId,
-      submittedAt: { $gte: twentyFourHoursAgo },
-    };
-    if (formTemplateId) duplicateQuery.formTemplate = formTemplateId;
-
-    const existingSubmission = await AuditSubmission.findOne(duplicateQuery)
-      .sort({ submittedAt: -1 })
-      .populate('submittedBy', 'name email')
-      .lean();
-
-    if (existingSubmission) {
-      return res.status(400).json({
-        message: 'For the same checklist form, please wait 24 hours from your last submission. You can submit a different form at any time.',
-        existingSubmission: {
-          submittedAt: existingSubmission.submittedAt,
-          submittedBy: existingSubmission.submittedBy,
-          auditDate: existingSubmission.auditDate,
-          auditTime: existingSubmission.auditTime,
-        }
-      });
-    }
-
     for (const it of items) {
       const val = (it.responseValue || it.yesNoNa || '').toString().toUpperCase();
       if (val === 'NO' && (!it.remarks || !String(it.remarks).trim())) {
@@ -426,7 +401,7 @@ exports.getStats = async (req, res) => {
         const ChecklistItem = require('../models/ChecklistItem');
         const FormTemplate = require('../models/FormTemplate');
         const allForms = await FormTemplate.find({ isActive: true }).populate('departments').lean();
-        
+
         // Get form item counts in one query
         const formItemCounts = await ChecklistItem.aggregate([
           { $match: { isActive: true } },
@@ -444,7 +419,7 @@ exports.getStats = async (req, res) => {
         // Process only departments that have stats
         for (const dept of statsWithCases) {
           const deptId = dept._id;
-          const assignedForms = allForms.filter(form => 
+          const assignedForms = allForms.filter(form =>
             form.departments.some(d => d._id?.toString() === deptId?.toString()) || form.isCommon
           );
 
@@ -524,7 +499,7 @@ exports.getStats = async (req, res) => {
             const result = clearanceData[0];
             if (result && result.totalCases > 0) {
               const clearanceRate = Math.round((result.fullyClearedCases / result.totalCases) * 100);
-              
+
               clearanceStats.push({
                 departmentId: deptId,
                 formId: form._id,
@@ -574,41 +549,8 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// Check duplicate: same form+department within 24h by submittedBy
 exports.checkDuplicateSubmission = async (req, res) => {
   try {
-    const { departmentId, formTemplateId } = req.query;
-    const userId = req.user?.sub || req.user?._id || req.user?.id;
-
-    if (!departmentId) {
-      return res.status(400).json({ message: 'Department ID is required' });
-    }
-
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const query = {
-      department: departmentId,
-      submittedAt: { $gte: twentyFourHoursAgo },
-    };
-    if (formTemplateId) query.formTemplate = formTemplateId;
-    if (userId) query.submittedBy = userId;
-
-    const existingSubmission = await AuditSubmission.findOne(query)
-      .sort({ submittedAt: -1 })
-      .populate('submittedBy', 'name email')
-      .select('submittedAt submittedBy auditDate auditTime')
-      .lean();
-
-    if (existingSubmission) {
-      return res.json({
-        exists: true,
-        message: 'For the same checklist form, please wait 24 hours from your last submission.',
-        submittedAt: existingSubmission.submittedAt,
-        submittedBy: existingSubmission.submittedBy,
-        auditDate: existingSubmission.auditDate,
-        auditTime: existingSubmission.auditTime,
-      });
-    }
-
     return res.json({ exists: false });
   } catch (err) {
     console.error('checkDuplicateSubmission error', err);
@@ -787,7 +729,7 @@ exports.exportSubmissions = async (req, res) => {
       const headers = Object.keys(formattedData[0]);
       const csvRows = [
         headers.join(','),
-        ...formattedData.map(row => 
+        ...formattedData.map(row =>
           headers.map(header => {
             const value = row[header] || '';
             // Escape commas and quotes in CSV
@@ -820,12 +762,12 @@ exports.exportSubmissions = async (req, res) => {
 exports.getExecutiveAnalytics = async (req, res) => {
   try {
     const { period = 'month' } = req.query // 'week', 'month', 'quarter', 'year'
-    
+
     // Calculate date ranges
     const now = new Date()
     const currentPeriod = new Date(now)
     const previousPeriod = new Date(now)
-    
+
     switch (period) {
       case 'week':
         currentPeriod.setDate(now.getDate() - 7)
@@ -929,7 +871,7 @@ exports.getExecutiveAnalytics = async (req, res) => {
 
     // Monthly trends (last 6 months) - single optimized aggregation
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
-    
+
     const monthlyTrendsData = await AuditSubmission.aggregate([
       {
         $match: {
@@ -1021,20 +963,20 @@ exports.getExecutiveAnalytics = async (req, res) => {
     ])
 
     // Risk indicators
-    const highRiskDepts = deptPerformance.filter(d => 
+    const highRiskDepts = deptPerformance.filter(d =>
       d.complianceRate < 70
     )
 
     // 100% Clearance analysis - optimized with aggregation
     const ChecklistItem = require('../models/ChecklistItem')
     const FormTemplate = require('../models/FormTemplate')
-    
+
     const allForms = await FormTemplate.find({ isActive: true }).lean().populate('departments')
     const clearanceAnalysis = []
 
     // Process only top 5 departments for faster response
     const topDepts = deptPerformance.slice(0, 5)
-    
+
     for (const dept of topDepts) {
       // Use aggregation for faster clearance calculation
       const clearanceData = await AuditSubmission.aggregate([
@@ -1088,7 +1030,7 @@ exports.getExecutiveAnalytics = async (req, res) => {
       ])
 
       const result = clearanceData[0] || { totalCases: 0, fullyCleared: 0 }
-      
+
       clearanceAnalysis.push({
         departmentId: dept.departmentId,
         departmentName: dept.departmentName,
@@ -1103,7 +1045,7 @@ exports.getExecutiveAnalytics = async (req, res) => {
 
     // Overall insights
     const insights = []
-    
+
     if (complianceTrend > 0) {
       insights.push({
         type: 'positive',
@@ -1178,7 +1120,7 @@ exports.getExecutiveAnalytics = async (req, res) => {
 exports.getTimeSeriesAnalytics = async (req, res) => {
   try {
     const { startDate, endDate, groupBy = 'day' } = req.query; // groupBy: 'day', 'week', 'month'
-    
+
     // Build date filter
     const dateFilter = {};
     if (startDate || endDate) {
@@ -1271,17 +1213,17 @@ exports.getTimeSeriesAnalytics = async (req, res) => {
     const formattedData = timeSeriesData.map(item => {
       let dateLabel = '';
       if (groupBy === 'day') {
-        dateLabel = new Date(item._id.year, item._id.month - 1, item._id.day).toLocaleDateString('en-US', { 
-          month: 'short', 
+        dateLabel = new Date(item._id.year, item._id.month - 1, item._id.day).toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
-          year: 'numeric' 
+          year: 'numeric'
         });
       } else if (groupBy === 'week') {
         dateLabel = `Week ${item._id.week}, ${item._id.year}`;
       } else {
-        dateLabel = new Date(item._id.year, item._id.month - 1, 1).toLocaleDateString('en-US', { 
-          month: 'short', 
-          year: 'numeric' 
+        dateLabel = new Date(item._id.year, item._id.month - 1, 1).toLocaleDateString('en-US', {
+          month: 'short',
+          year: 'numeric'
         });
       }
 
@@ -1319,14 +1261,14 @@ exports.getUserActivityAnalytics = async (req, res) => {
   try {
     const { startDate, endDate, departmentId } = req.query;
     const User = require('../models/User');
-    
+
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.submittedAt = {};
       if (startDate) dateFilter.submittedAt.$gte = new Date(startDate);
       if (endDate) dateFilter.submittedAt.$lte = new Date(endDate);
     }
-    
+
     if (departmentId) {
       dateFilter.department = departmentId;
     }
@@ -1487,14 +1429,14 @@ exports.getFormTemplateAnalytics = async (req, res) => {
   try {
     const { startDate, endDate, departmentId } = req.query;
     const FormTemplate = require('../models/FormTemplate');
-    
+
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.submittedAt = {};
       if (startDate) dateFilter.submittedAt.$gte = new Date(startDate);
       if (endDate) dateFilter.submittedAt.$lte = new Date(endDate);
     }
-    
+
     if (departmentId) {
       dateFilter.department = departmentId;
     }
@@ -1585,7 +1527,7 @@ exports.getFormTemplateAnalytics = async (req, res) => {
 exports.getComprehensiveAnalytics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.submittedAt = {};
@@ -1761,16 +1703,16 @@ exports.getComprehensiveAnalytics = async (req, res) => {
       return data.map(item => {
         let dateLabel = '';
         if (format === 'day') {
-          dateLabel = new Date(item._id.year, item._id.month - 1, item._id.day).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
+          dateLabel = new Date(item._id.year, item._id.month - 1, item._id.day).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
           });
         } else if (format === 'week') {
           dateLabel = `Week ${item._id.week}, ${item._id.year}`;
         } else {
-          dateLabel = new Date(item._id.year, item._id.month - 1, 1).toLocaleDateString('en-US', { 
-            month: 'short', 
-            year: 'numeric' 
+          dateLabel = new Date(item._id.year, item._id.month - 1, 1).toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric'
           });
         }
         return {

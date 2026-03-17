@@ -30,12 +30,6 @@ export function Form() {
   const [loadError, setLoadError] = useState(null)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [submittedContext, setSubmittedContext] = useState(null)
-  const [duplicateExists, setDuplicateExists] = useState(false)
-  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
-  const [duplicateMessage, setDuplicateMessage] = useState('')
-  const [lastDuplicateSubmittedAt, setLastDuplicateSubmittedAt] = useState(null)
-  const [duplicateCountdown, setDuplicateCountdown] = useState('')
-  const [countdownTimer, setCountdownTimer] = useState(null)
   const [showRestoreDraftModal, setShowRestoreDraftModal] = useState(false)
   const [draftToRestore, setDraftToRestore] = useState(null)
   const [lastDraftSavedAt, setLastDraftSavedAt] = useState(null)
@@ -219,26 +213,21 @@ export function Form() {
 
         const depts = await apiClient.get('/departments')
         const deptsActive = (depts || []).filter((d) => d.isActive !== false)
-        const userDept = userDeptId
-          ? deptsActive.find((d) => {
-            const dId = d._id?.toString() || d._id
-            const uId = userDeptId?.toString() || userDeptId
-            return dId === uId
-          }) || null
-          : null
-        setDepartment(userDept)
-        if (userDept) setDepartmentId(userDept._id?.toString() || userDept._id)
-        const formDeptIds = (form.departments || []).map((d) => (d && (d._id || d.id) ? String(d._id || d.id) : String(d)))
-        const departmentOptions = user?.role === 'SUPER_ADMIN' && formDeptIds.length
+        const formDeptIds = (form.departments || []).map((d) =>
+          (d && (d._id || d.id) ? String(d._id || d.id) : String(d))
+        )
+        const departmentOptions = formDeptIds.length
           ? deptsActive.filter((d) => formDeptIds.includes(String(d._id)))
-          : userDept
-            ? [userDept]
-            : deptsActive
+          : deptsActive
+
+        // Auto-select department based primarily on the form template:
+        // - If the form has departments, pick the first one from that list.
+        // - Otherwise, fall back to the first active department (if any).
+        const initialDept = departmentOptions.length > 0 ? departmentOptions[0] : null
+
         setDepartmentsList(departmentOptions)
-        if (departmentOptions.length === 1 && !userDeptId && user?.role === 'SUPER_ADMIN') {
-          setDepartmentId(departmentOptions[0]._id?.toString() || departmentOptions[0]._id)
-          setDepartment(departmentOptions[0])
-        }
+        setDepartment(initialDept)
+        setDepartmentId(initialDept ? initialDept._id?.toString() || initialDept._id : '')
         try {
           const [locations, assets] = await Promise.all([
             apiClient.get('/locations?selectable=true').catch(() => []),
@@ -393,128 +382,7 @@ export function Form() {
     apiClient.get(`/assets?locationId=${locationId}`).then((data) => setAssetsList(Array.isArray(data) ? data : [])).catch(() => setAssetsList([]))
   }, [locationId])
 
-  // Check for duplicate submission (general checklist: by department + form)
-  useEffect(() => {
-    const checkDuplicate = async () => {
-      if (loading) {
-        setDuplicateExists(false)
-        setDuplicateMessage('')
-        setLastDuplicateSubmittedAt(null)
-        setDuplicateCountdown('')
-        setCountdownTimer(null)
-        return
-      }
-
-      let departmentIdForCheck = departmentId || null
-      if (!departmentIdForCheck && user?.department) {
-        const userDeptId = typeof user.department === 'object'
-          ? (user.department.id || user.department._id)
-          : user.department
-        if (formTemplate?.departments?.length) {
-          const formDeptIds = formTemplate.departments.map((d) => (d && (d._id || d.id) ? String(d._id || d.id) : String(d)))
-          const userDeptStr = String(userDeptId)
-          departmentIdForCheck = formDeptIds.includes(userDeptStr) ? userDeptId : (formTemplate.departments[0]._id || formTemplate.departments[0].id || formTemplate.departments[0])
-        } else {
-          departmentIdForCheck = userDeptId
-        }
-      }
-      if (!departmentIdForCheck && user?.role === 'SUPER_ADMIN' && formTemplate?.departments?.length) {
-        departmentIdForCheck = formTemplate.departments[0]._id || formTemplate.departments[0].id || formTemplate.departments[0]
-      }
-
-      if (!departmentIdForCheck) {
-        setDuplicateExists(false)
-        setDuplicateMessage('')
-        setLastDuplicateSubmittedAt(null)
-        setDuplicateCountdown('')
-        setCountdownTimer(null)
-        return
-      }
-
-      setCheckingDuplicate(true)
-      try {
-        const params = new URLSearchParams({
-          departmentId: departmentIdForCheck,
-        })
-        if (formTemplateId) params.set('formTemplateId', formTemplateId)
-        const response = await apiClient.get(`/audits/check-duplicate?${params.toString()}`)
-
-        if (response.exists) {
-          setDuplicateExists(true)
-          const submittedAt = response.submittedAt ? new Date(response.submittedAt) : null
-          setLastDuplicateSubmittedAt(submittedAt)
-          const submittedDate = submittedAt
-            ? submittedAt.toLocaleString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-            : 'previously'
-          const submittedBy = response.submittedBy?.name || 'another user'
-          const baseMsg = response.message || 'For this same checklist, wait 24 hours from your last submission.'
-          setDuplicateMessage(
-            submittedAt
-              ? `${baseMsg} Last submitted by ${submittedBy} on ${submittedDate}.`
-              : baseMsg
-          )
-        } else {
-          setDuplicateExists(false)
-          setDuplicateMessage('')
-          setLastDuplicateSubmittedAt(null)
-          setDuplicateCountdown('')
-          setCountdownTimer(null)
-        }
-      } catch (err) {
-        console.error('Error checking duplicate:', err)
-        setDuplicateExists(false)
-        setDuplicateMessage('')
-        setLastDuplicateSubmittedAt(null)
-        setDuplicateCountdown('')
-        setCountdownTimer(null)
-      } finally {
-        setCheckingDuplicate(false)
-      }
-    }
-
-    // Debounce the check to avoid too many API calls
-    const timeoutId = setTimeout(() => {
-      checkDuplicate()
-    }, 500) // Wait 500ms after user stops typing
-
-    return () => clearTimeout(timeoutId)
-  }, [user, loading, formTemplateId, formTemplate, departmentId])
-
-  // 24h countdown: update every second when duplicate exists; when elapsed, allow submit again
-  useEffect(() => {
-    if (!duplicateExists || !lastDuplicateSubmittedAt) {
-      setDuplicateCountdown('')
-      setCountdownTimer(null)
-      return
-    }
-    const nextAllowedAt = new Date(lastDuplicateSubmittedAt.getTime() + 24 * 60 * 60 * 1000)
-    const update = () => {
-      const now = new Date()
-      const remainingMs = nextAllowedAt.getTime() - now.getTime()
-      if (remainingMs <= 0) {
-        setDuplicateCountdown('You can submit this checklist now.')
-        setCountdownTimer(null)
-        setDuplicateExists(false)
-        setLastDuplicateSubmittedAt(null)
-        setDuplicateMessage('')
-        return
-      }
-      const h = Math.floor(remainingMs / (1000 * 60 * 60))
-      const m = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60))
-      const s = Math.floor((remainingMs % (1000 * 60)) / 1000)
-      setCountdownTimer({ h, m, s })
-      setDuplicateCountdown(`Submit again in ${h}h ${m}m ${s}s`)
-    }
-    update()
-    const interval = setInterval(update, 1000)
-    return () => clearInterval(interval)
-  }, [duplicateExists, lastDuplicateSubmittedAt])
+  // Duplicate submission checks and 24h countdown have been removed – submissions are always allowed
 
   const resetToNewForm = () => {
     setDepartmentId(department?._id?.toString() || department?._id || '')
@@ -802,10 +670,10 @@ export function Form() {
       {message && (
         <div
           className={`px-4 py-3 rounded-lg shadow-sm border-2 flex items-start gap-3 ${message.includes('successfully') || message.includes('Success')
-              ? 'bg-green-50 border-green-300 text-green-800'
-              : message.includes('Error') || message.includes('error') || message.includes('failed')
-                ? 'bg-red-50 border-red-300 text-red-800'
-                : 'bg-maroon-50 border-maroon-300 text-maroon-800'
+            ? 'bg-green-50 border-green-300 text-green-800'
+            : message.includes('Error') || message.includes('error') || message.includes('failed')
+              ? 'bg-red-50 border-red-300 text-red-800'
+              : 'bg-maroon-50 border-maroon-300 text-maroon-800'
             }`}
         >
           {message.includes('successfully') || message.includes('Success') ? (
@@ -833,51 +701,7 @@ export function Form() {
               Operational context <span className="text-xs font-normal text-slate-600 ml-2">(Department/Service, Location, Supervisor)</span>
             </h3>
           </div>
-          <div className="px-4 pt-3">
-            {(duplicateExists || duplicateCountdown || countdownTimer) && (duplicateMessage || duplicateCountdown || countdownTimer) && (
-              <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-md text-xs text-red-800">
-                <div className="font-bold mb-1 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {duplicateExists ? 'Same checklist: wait 24 hours' : 'You can submit now'}
-                </div>
-                {duplicateMessage && <div className="leading-relaxed">{duplicateMessage}</div>}
-                {countdownTimer && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="text-red-700 font-medium">Time remaining:</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="inline-flex flex-col items-center bg-red-200 rounded-lg px-3 py-1.5 min-w-[3rem]">
-                        <span className="text-lg font-bold font-mono tabular-nums text-red-900">{String(countdownTimer.h).padStart(2, '0')}</span>
-                        <span className="text-[10px] uppercase text-red-700 font-semibold">hrs</span>
-                      </span>
-                      <span className="text-red-600 font-bold">:</span>
-                      <span className="inline-flex flex-col items-center bg-red-200 rounded-lg px-3 py-1.5 min-w-[3rem]">
-                        <span className="text-lg font-bold font-mono tabular-nums text-red-900">{String(countdownTimer.m).padStart(2, '0')}</span>
-                        <span className="text-[10px] uppercase text-red-700 font-semibold">min</span>
-                      </span>
-                      <span className="text-red-600 font-bold">:</span>
-                      <span className="inline-flex flex-col items-center bg-red-200 rounded-lg px-3 py-1.5 min-w-[3rem]">
-                        <span className="text-lg font-bold font-mono tabular-nums text-red-900">{String(countdownTimer.s).padStart(2, '0')}</span>
-                        <span className="text-[10px] uppercase text-red-700 font-semibold">sec</span>
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {duplicateCountdown && !countdownTimer && (
-                  <div className="mt-2 font-mono font-semibold text-red-900 bg-red-100/80 rounded px-2 py-1 inline-block">
-                    {duplicateCountdown}
-                  </div>
-                )}
-              </div>
-            )}
-            {checkingDuplicate && (
-              <div className="mb-4 text-xs text-maroon-600 flex items-center gap-2">
-                <span className="inline-block animate-spin rounded-full h-3 w-3 border-2 border-maroon-600 border-t-transparent" />
-                Checking for existing submission...
-              </div>
-            )}
-          </div>
+          <div className="px-4 pt-3" />
           <div className="p-4 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
@@ -890,8 +714,7 @@ export function Form() {
                     const d = departmentsList.find((x) => (x._id?.toString() || x._id) === id)
                     setDepartment(d || null)
                   }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists}
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all border-slate-300 hover:border-slate-400"
                   required
                 >
                   <option value="">Select department</option>
@@ -913,8 +736,7 @@ export function Form() {
                     setAssetId('')
                     setAsset('')
                   }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists}
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all border-slate-300 hover:border-slate-400"
                   required
                 >
                   <option value="">Select type</option>
@@ -937,8 +759,8 @@ export function Form() {
                     setAssetId('')
                     setAsset('')
                   }}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists || !locationType}
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all border-slate-300 hover:border-slate-400"
+                  disabled={!locationType}
                   required
                 >
                   <option value="">{locationType ? 'Select location' : 'Select type first'}</option>
@@ -961,7 +783,7 @@ export function Form() {
                   })()}
                 </select>
               </div>
-              
+
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-slate-700">
                   Submit to Supervisor <span className="text-red-600">*</span>
@@ -969,8 +791,7 @@ export function Form() {
                 <select
                   value={selectedSupervisorId}
                   onChange={(e) => setSelectedSupervisorId(e.target.value)}
-                  className={`w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all ${duplicateExists ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-slate-400'}`}
-                  disabled={duplicateExists}
+                  className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all border-slate-300 hover:border-slate-400"
                   required
                 >
                   <option value="">Select supervisor</option>
@@ -1138,20 +959,13 @@ export function Form() {
             </button>
             <button
               type="submit"
-              disabled={submitting || duplicateExists || checkingDuplicate}
+              disabled={submitting}
               className="bg-gradient-to-r from-maroon-600 to-maroon-600 hover:from-maroon-700 hover:to-maroon-700 text-white font-semibold px-8 py-2.5 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm text-sm flex items-center gap-2"
             >
               {submitting ? (
                 <>
                   <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
                   Submitting...
-                </>
-              ) : duplicateExists ? (
-                <>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  Duplicate - Cannot Submit
                 </>
               ) : (
                 <>
@@ -1203,4 +1017,3 @@ export function Form() {
     </div>
   )
 }
-

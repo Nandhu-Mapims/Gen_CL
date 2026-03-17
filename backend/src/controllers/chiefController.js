@@ -13,20 +13,20 @@ exports.getSupervisorSessions = async (req, res) => {
     if (!userId) {
       return res.status(401).json({ message: 'Not authenticated' });
     }
-
     const User = require('../models/User');
     const currentUser = await User.findById(userId).lean();
     if (!currentUser) {
       return res.status(404).json({ message: 'User not found' });
     }
+    // Build access filter:
+    // - SUPER_ADMIN: can see all submissions (no restriction)
+    // - Others (supervisors): see submissions explicitly assigned to them, regardless of department
+    const accessFilter =
+      currentUser.role === 'SUPER_ADMIN'
+        ? {}
+        : { assignedToUserId: userId };
 
-    // Build department filter — SUPER_ADMIN sees all, others see their own department
-    const deptFilter = {};
-    if (currentUser.role !== 'SUPER_ADMIN' && currentUser.department) {
-      deptFilter.department = currentUser.department;
-    }
-
-    const submissions = await AuditSubmission.find(deptFilter)
+    const submissions = await AuditSubmission.find(accessFilter)
       .populate('submittedBy', 'name email designation')
       .populate('department', 'name code')
       .populate('formTemplate', 'name')
@@ -46,8 +46,8 @@ exports.getSupervisorSessions = async (req, res) => {
       const dateStr = sub.auditDate
         ? new Date(sub.auditDate).toISOString().slice(0, 10)
         : sub.submittedAt
-        ? new Date(sub.submittedAt).toISOString().slice(0, 10)
-        : 'unknown';
+          ? new Date(sub.submittedAt).toISOString().slice(0, 10)
+          : 'unknown';
       const timeStr = sub.auditTime || (sub.submittedAt ? new Date(sub.submittedAt).toISOString().slice(11, 16) : '');
 
       const key = `${submittedById}|${dateStr}|${formId}|${deptId}`;
@@ -146,7 +146,7 @@ exports.getSessionSubmissions = async (req, res) => {
 exports.getChiefPatients = async (req, res) => {
   try {
     const { chiefName } = req.query;
-    
+
     if (!chiefName || !chiefName.trim()) {
       return res.status(400).json({ message: 'Chief name is required' });
     }
