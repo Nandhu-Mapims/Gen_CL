@@ -72,6 +72,28 @@ export function Form() {
     return TYPE_ORDER.filter((t) => typeSet.has(t))
   }, [locationsList])
 
+  // Only show supervisors that belong to the currently selected department.
+  const filteredSupervisors = useMemo(() => {
+    if (!departmentId) return []
+    return (Array.isArray(supervisors) ? supervisors : []).filter((s) => {
+      const dept = s?.department
+      const sDeptId = dept && typeof dept === 'object' ? (dept._id || dept.id) : dept
+      return sDeptId && String(sDeptId) === String(departmentId)
+    })
+  }, [supervisors, departmentId])
+
+  // Default the "Submit to Supervisor" selection to the department's supervisor.
+  useEffect(() => {
+    if (!departmentId) {
+      if (selectedSupervisorId) setSelectedSupervisorId('')
+      return
+    }
+    const stillValid = filteredSupervisors.some((s) => String(s._id) === String(selectedSupervisorId))
+    if (!stillValid) {
+      setSelectedSupervisorId(filteredSupervisors[0]?._id?.toString?.() || filteredSupervisors[0]?._id || '')
+    }
+  }, [departmentId, filteredSupervisors, selectedSupervisorId])
+
   // If a draft restored locationId exists, backfill locationType from DB list
   useEffect(() => {
     if (locationType) return
@@ -794,10 +816,16 @@ export function Form() {
                   className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-maroon-500 focus:border-maroon-500 transition-all border-slate-300 hover:border-slate-400"
                   required
                 >
-                  <option value="">Select supervisor</option>
-                  {supervisors.map((s) => (
+                  <option value="">
+                    {!departmentId
+                      ? 'Select department first'
+                      : filteredSupervisors.length === 0
+                        ? 'No supervisor for this department'
+                        : 'Select supervisor'}
+                  </option>
+                  {filteredSupervisors.map((s) => (
                     <option key={s._id} value={s._id}>
-                      {s.name}{s.designation ? ` — ${s.designation}` : ''}{s.department?.name ? ` (${s.department.name})` : ''}
+                      {s.name}{s.designation ? ` — ${s.designation}` : ''}
                     </option>
                   ))}
                 </select>

@@ -216,7 +216,8 @@ exports.login = async (req, res) => {
 exports.listSupervisors = async (req, res) => {
   try {
     const supervisors = await User.find({ role: 'SUPERVISOR', isActive: true })
-      .select('_id name designation')
+      .select('_id name designation department')
+      .populate('department', 'name code')
       .sort({ name: 1 });
     res.json(supervisors);
   } catch (err) {
