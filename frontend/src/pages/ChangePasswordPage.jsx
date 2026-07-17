@@ -3,6 +3,21 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { apiClient } from '../api/client'
 
+const PASSWORD_RULES = [
+  { test: (p) => p.length >= 8, message: 'New password must be at least 8 characters' },
+  { test: (p) => /[A-Z]/.test(p), message: 'New password must contain at least one uppercase letter' },
+  { test: (p) => /[a-z]/.test(p), message: 'New password must contain at least one lowercase letter' },
+  { test: (p) => /[0-9]/.test(p), message: 'New password must contain at least one number' },
+  { test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(p), message: 'New password must contain at least one special character' },
+]
+
+function validateNewPassword(password) {
+  for (const rule of PASSWORD_RULES) {
+    if (!rule.test(password)) return rule.message
+  }
+  return null
+}
+
 export function ChangePasswordPage() {
   const { user, initializing } = useAuth()
   const navigate = useNavigate()
@@ -32,8 +47,9 @@ export function ChangePasswordPage() {
       setError('New password and confirm password do not match')
       return
     }
-    if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters')
+    const passwordError = validateNewPassword(newPassword)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     setLoading(true)

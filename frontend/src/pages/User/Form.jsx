@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { apiClient } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
@@ -15,6 +15,7 @@ export function Form() {
   const [items, setItems] = useState([])
   const [answers, setAnswers] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const submitLockRef = useRef(false)
   const [message, setMessage] = useState('')
   const [locationType, setLocationType] = useState('')
   const [locationId, setLocationId] = useState('')
@@ -448,6 +449,7 @@ export function Form() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (submitLockRef.current || submitting) return
 
     if (!formTemplateId) {
       setMessage('Missing form information. Please refresh the page.')
@@ -511,6 +513,7 @@ export function Form() {
       }
     }
 
+    submitLockRef.current = true
     setSubmitting(true)
     setMessage('')
     try {
@@ -550,6 +553,7 @@ export function Form() {
         setMessage(errorMsg)
       }
     } finally {
+      submitLockRef.current = false
       setSubmitting(false)
     }
   }
@@ -712,6 +716,16 @@ export function Form() {
             </svg>
           )}
           <span className="text-sm font-medium flex-1">{message}</span>
+        </div>
+      )}
+
+      {submitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-[1px]">
+          <div className="bg-white rounded-xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3">
+            <span className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-maroon-200 border-t-maroon-600" />
+            <p className="text-sm font-semibold text-slate-800">Submitting your report…</p>
+            <p className="text-xs text-slate-500">Please wait — do not click again</p>
+          </div>
         </div>
       )}
 

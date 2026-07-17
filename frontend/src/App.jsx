@@ -17,7 +17,7 @@ import { AuditorAnalytics } from './pages/Auditor/AuditorAnalytics'
 import { Dashboard } from './pages/Admin/Dashboard'
 import { Analytics } from './pages/Admin/Analytics'
 import { ChiefAnalytics as AdminChiefAnalytics } from './pages/Admin/ChiefAnalytics'
-import { PatientReport } from './pages/Admin/PatientReport'
+import { PatientReport, SubmissionDeleteAction } from './pages/Admin/PatientReport'
 import { DepartmentLogs } from './pages/Admin/DepartmentLogs'
 import { MasterDataManagement } from './pages/Admin/MasterDataManagement'
 import { LocationManagement } from './pages/Admin/LocationManagement'
@@ -54,6 +54,8 @@ function App() {
           <Route path="/admin/chief-analytics" element={<ProtectedRoute roles={['SUPER_ADMIN']}><AdminChiefAnalytics /></ProtectedRoute>} />
 
           <Route path="/admin/submissions-report" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']}><PatientReport /></ProtectedRoute>} />
+          <Route path="/admin/submissions-report/delete/session/:id" element={<ProtectedRoute roles={['SUPER_ADMIN']}><SubmissionDeleteAction mode="session" /></ProtectedRoute>} />
+          <Route path="/admin/submissions-report/delete/row/:id" element={<ProtectedRoute roles={['SUPER_ADMIN']}><SubmissionDeleteAction mode="row" /></ProtectedRoute>} />
           <Route path="/admin/patient-report" element={<Navigate to="/admin/submissions-report" replace />} />
           <Route path="/admin/department-logs" element={<ProtectedRoute roles={['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']}><DepartmentLogs /></ProtectedRoute>} />
           <Route path="/admin/locations" element={<ProtectedRoute roles={['SUPER_ADMIN']}><LocationManagement /></ProtectedRoute>} />

@@ -25,6 +25,8 @@ router.get('/analytics/comprehensive', auth(['SUPER_ADMIN', 'QA']), auditControl
 router.get('/export', auth(['SUPER_ADMIN', 'QA']), auditController.exportSubmissions);
 
 router.get('/session/:id', auth(['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']), auditController.getSubmissionsBySession);
+router.delete('/session/:id', auth(['SUPER_ADMIN']), auditController.deleteSession);
+router.delete('/:id', auth(['SUPER_ADMIN']), auditController.deleteSubmission);
 router.get('/report-summary', auth(['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']), auditController.getReportSummary);
 
 router.get('/', auth(['SUPER_ADMIN', 'QA', 'DEPT_ADMIN', 'SUPERVISOR', 'STAFF']), auditController.getSubmissions);

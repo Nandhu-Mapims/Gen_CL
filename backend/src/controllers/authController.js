@@ -307,7 +307,7 @@ exports.deleteUser = async (req, res) => {
 // Change password for logged-in user (admin, auditor, chief)
 exports.changePassword = async (req, res) => {
   try {
-    const userId = req.user?.id || req.user?._id;
+    const userId = req.user?.sub || req.user?.id || req.user?._id;
     if (!userId) return res.status(401).json({ message: 'Not authenticated' });
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
@@ -316,7 +316,7 @@ exports.changePassword = async (req, res) => {
     const user = await User.findById(userId).select('passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found' });
     const match = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!match) return res.status(401).json({ message: 'Current password is incorrect' });
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect' });
     const validation = validatePassword(newPassword);
     if (!validation.valid) return res.status(400).json({ message: validation.message });
     user.passwordHash = await bcrypt.hash(newPassword, 10);

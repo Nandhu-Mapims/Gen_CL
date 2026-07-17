@@ -122,8 +122,13 @@ router.put('/:id', auth('SUPER_ADMIN'), async (req, res) => {
 router.delete('/:id', auth('SUPER_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
-    await FormTemplate.findByIdAndDelete(id);
-    res.status(204).send();
+    const form = await FormTemplate.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!form) return res.status(404).json({ message: 'Form template not found' });
+    res.json({ message: 'Form removed from upcoming use. Past submissions are unchanged.' });
   } catch (err) {
     console.error('deleteFormTemplate error', err);
     res.status(500).json({ message: 'Server error' });

@@ -31,6 +31,12 @@ const auditSubmissionSchema = new mongoose.Schema(
       ref: 'ChecklistItem',
       required: true,
     },
+    // Frozen copy at submit time — past reports stay unchanged when form/checklist is edited
+    checklistLabel: { type: String, trim: true },
+    checklistSection: { type: String, trim: true },
+    checklistResponseType: { type: String, trim: true },
+    checklistOrder: { type: Number, default: 0 },
+    formTemplateName: { type: String, trim: true },
     yesNoNa: { type: String, enum: ['YES', 'NO'], required: false },
     responseValue: { type: String },
     remarks: { type: String },

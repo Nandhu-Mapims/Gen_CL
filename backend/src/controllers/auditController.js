@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const AuditSubmission = require('../models/AuditSubmission');
 const FormTemplate = require('../models/FormTemplate');
+const ChecklistItem = require('../models/ChecklistItem');
+const { applySubmissionSnapshots, backfillMissingSnapshots } = require('../utils/submissionSnapshot');
 
 function toObjectId(id) {
   if (!id) return null;
@@ -55,12 +57,26 @@ exports.submitAudit = async (req, res) => {
       }
     }
 
+    const itemIds = items.map((it) => it.checklistItemId).filter(Boolean);
+    const checklistRows = await ChecklistItem.find({ _id: { $in: itemIds } })
+      .select('label section responseType order')
+      .lean();
+    const checklistById = new Map(checklistRows.map((row) => [String(row._id), row]));
+
+    let formTemplateName = '';
+    if (formTemplateId) {
+      const formMeta = await FormTemplate.findById(formTemplateId).select('name').lean();
+      formTemplateName = formMeta?.name || '';
+    }
+
     const docs = items.map((it) => {
       const rawVal = (it.responseValue || it.yesNoNa || '').toString().trim().toUpperCase();
       const yesNoNaForSchema = rawVal === 'YES' || rawVal === 'NO' ? rawVal : undefined;
+      const meta = checklistById.get(String(it.checklistItemId)) || {};
       return {
         department: departmentForSubmission,
         formTemplate: formTemplateId || undefined,
+        formTemplateName: formTemplateName || undefined,
         locationId: locationId || undefined,
         assetId: assetId || undefined,
         shiftId: shiftId || undefined,
@@ -69,6 +85,10 @@ exports.submitAudit = async (req, res) => {
         asset: assetStr || undefined,
         shift: shiftStr || undefined,
         checklistItemId: it.checklistItemId,
+        checklistLabel: meta.label || it.label || '',
+        checklistSection: meta.section || it.section || '',
+        checklistResponseType: meta.responseType || it.responseType || 'YES_NO',
+        checklistOrder: meta.order ?? it.order ?? 0,
         yesNoNa: yesNoNaForSchema,
         responseValue: rawVal || it.responseValue || it.yesNoNa || '',
         remarks: it.remarks || '',
@@ -128,7 +148,8 @@ exports.getSubmissions = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
-    res.json(submissions);
+    await backfillMissingSnapshots(submissions, AuditSubmission);
+    res.json(applySubmissionSnapshots(submissions));
   } catch (err) {
     console.error('getSubmissions error', err);
     res.status(500).json({ message: 'Server error' });
@@ -164,9 +185,60 @@ exports.getSubmissionsBySession = async (req, res) => {
       .populate('submittedBy', 'name email')
       .sort({ createdAt: 1 })
       .lean();
-    res.json(sessionSubmissions);
+
+    await backfillMissingSnapshots(sessionSubmissions, AuditSubmission);
+    res.json(applySubmissionSnapshots(sessionSubmissions));
   } catch (err) {
     console.error('getSubmissionsBySession error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+async function getSessionFilterFromSubmissionId(id) {
+  const doc = await AuditSubmission.findById(id).lean();
+  if (!doc) return null;
+  const submittedAt = new Date(doc.submittedAt);
+  const start = new Date(submittedAt);
+  start.setMilliseconds(0);
+  const end = new Date(start.getTime() + 1000);
+  return {
+    department: doc.department,
+    formTemplate: doc.formTemplate,
+    submittedBy: doc.submittedBy,
+    submittedAt: { $gte: start, $lt: end },
+  };
+}
+
+// Delete a single checklist response row
+exports.deleteSubmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await AuditSubmission.findByIdAndDelete(id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Submission row not found' });
+    }
+    res.json({ message: 'Submission row deleted', deletedId: id });
+  } catch (err) {
+    console.error('deleteSubmission error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Delete an entire form submission session (all checklist rows from one submit)
+exports.deleteSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sessionFilter = await getSessionFilterFromSubmissionId(id);
+    if (!sessionFilter) {
+      return res.status(404).json({ message: 'Submission session not found' });
+    }
+    const result = await AuditSubmission.deleteMany(sessionFilter);
+    res.json({
+      message: 'Submission session deleted',
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error('deleteSession error', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

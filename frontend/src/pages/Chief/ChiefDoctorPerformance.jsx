@@ -31,8 +31,8 @@ export function ChiefDoctorPerformance() {
   }, [user])
 
   const loadPerformanceData = async () => {
-    if (!user?.name) {
-      setError('User name not found. Please log in again.')
+    if (!user?.id && !user?._id) {
+      setError('User not found. Please log in again.')
       setLoading(false)
       return
     }
@@ -40,7 +40,7 @@ export function ChiefDoctorPerformance() {
     setLoading(true)
     setError('')
     try {
-      const result = await apiClient.get(`/chief/doctor-performance?chiefName=${encodeURIComponent(user.name)}`)
+      const result = await apiClient.get('/chief/doctor-performance')
       setData(result)
     } catch (err) {
       console.error('Error loading auditor performance:', err)
@@ -130,7 +130,7 @@ export function ChiefDoctorPerformance() {
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Auditor Performance</h1>
         <p className="mt-1 text-sm text-slate-600">Track auditor productivity and documentation thoroughness</p>
         <p className="mt-1 text-xs text-maroon-600 bg-maroon-50 rounded px-2 py-1 inline-block">
-          Performance of staff who submitted forms with you as Unit Supervisor.
+          Performance of staff who submitted forms assigned to you as supervisor.
         </p>
         <p className="text-xs text-slate-500 mt-2">Logged in as: {user?.name}</p>
       </div>
@@ -322,7 +322,7 @@ export function ChiefDoctorPerformance() {
                 <tr>
                   <td colSpan="10" className="p-8 text-center">
                     <p className="text-slate-600 font-medium">No auditor performance data yet</p>
-                    <p className="text-slate-500 text-sm mt-1">This appears when staff submit forms with your name as Unit Supervisor.</p>
+                    <p className="text-slate-500 text-sm mt-1">This appears when staff submit forms assigned to you as supervisor.</p>
                   </td>
                 </tr>
               ) : (

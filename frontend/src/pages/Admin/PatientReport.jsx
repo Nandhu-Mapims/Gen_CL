@@ -1,9 +1,54 @@
 import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { apiClient } from '../../api/client'
+import { useAuth } from '../../context/AuthContext'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
+export function SubmissionDeleteAction({ mode }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const run = async () => {
+      const label = mode === 'session' ? 'entire submission session (all checklist rows)' : 'this checklist row'
+      if (!window.confirm(`Delete ${label}? This cannot be undone.`)) {
+        navigate('/admin/submissions-report')
+        return
+      }
+      try {
+        const url = mode === 'session' ? `/audits/session/${id}` : `/audits/${id}`
+        await apiClient.delete(url)
+        navigate('/admin/submissions-report')
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Delete failed')
+      }
+    }
+    run()
+  }, [id, mode, navigate])
+
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto mt-12 p-6 bg-red-50 border border-red-200 rounded-xl text-red-800">
+        <p className="font-medium">{error}</p>
+        <button type="button" onClick={() => navigate('/admin/submissions-report')} className="mt-4 text-sm underline">
+          Back to submissions report
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-[200px] text-slate-600">
+      Deleting…
+    </div>
+  )
+}
+
 export function PatientReport() {
+  const { user } = useAuth()
+  const canDelete = user?.role === 'SUPER_ADMIN'
   const [departments, setDepartments] = useState([])
   const [locationsList, setLocationsList] = useState([])
   const [shiftsList, setShiftsList] = useState([])
@@ -65,6 +110,7 @@ export function PatientReport() {
       }
       const section = deptData.sections.get(sectionName)
       section.items.push({
+        _id: sub._id,
         checklistItemId: {
           _id: sub.checklistItemId?._id,
           label: sub.checklistItemId?.label || 'N/A',
@@ -176,6 +222,44 @@ export function PatientReport() {
       setError(err.response?.data?.message || err.message || 'Failed to load')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteSession = async (firstId, e) => {
+    e?.stopPropagation?.()
+    if (!canDelete) return
+    if (!window.confirm('Delete this entire submission (all checklist rows)? This cannot be undone.')) return
+    try {
+      await apiClient.delete(`/audits/session/${firstId}`)
+      setSessions((prev) => prev.filter((s) => s.firstId !== firstId))
+      if (selectedSessionId === firstId) {
+        setSelectedSessionId(null)
+        setReportData(null)
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to delete session')
+    }
+  }
+
+  const handleDeleteRow = async (rowId) => {
+    if (!canDelete || !rowId) return
+    if (!window.confirm('Delete this checklist row? This cannot be undone.')) return
+    try {
+      await apiClient.delete(`/audits/${rowId}`)
+      if (selectedSessionId) {
+        await handleViewSession(selectedSessionId)
+      }
+      setSessions((prev) =>
+        prev
+          .map((s) => ({
+            ...s,
+            submissions: s.submissions.filter((sub) => sub._id !== rowId),
+            totalCount: s.submissions.filter((sub) => sub._id !== rowId).length,
+          }))
+          .filter((s) => s.submissions.length > 0)
+      )
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to delete row')
     }
   }
 
@@ -841,6 +925,7 @@ export function PatientReport() {
                         <th className="text-left p-3 font-semibold text-slate-700">Description</th>
                         <th className="text-left p-3 font-semibold text-slate-700">Status</th>
                         <th className="text-left p-3 font-semibold text-slate-700">Action</th>
+                        {canDelete && <th className="text-left p-3 font-semibold text-slate-700">Delete</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -864,6 +949,17 @@ export function PatientReport() {
                               View report
                             </button>
                           </td>
+                          {canDelete && (
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteSession(s.firstId, e)}
+                                className="text-red-600 font-medium hover:underline text-xs"
+                              >
+                                Delete session
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -893,6 +989,15 @@ export function PatientReport() {
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-3">
+                  {canDelete && selectedSessionId && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSession(selectedSessionId)}
+                      className="border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 font-medium px-6 py-2.5 rounded-lg transition-all text-sm"
+                    >
+                      Delete entire session
+                    </button>
+                  )}
                   <button
                     onClick={handleExportPDF}
                     className="bg-gradient-to-r from-maroon-600 to-maroon-600 hover:from-maroon-700 hover:to-maroon-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm transition-all text-sm flex items-center gap-2"
@@ -914,6 +1019,34 @@ export function PatientReport() {
                 </div>
               </div>
             </div>
+
+            {canDelete && reportData && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 no-print">
+                <h4 className="text-sm font-semibold text-red-900 mb-2">Delete checklist rows (Super Admin)</h4>
+                <p className="text-xs text-red-700 mb-3">
+                  Remove individual rows or use the URL:{' '}
+                  <code className="bg-white px-1 rounded">/admin/submissions-report/delete/row/:id</code>
+                </p>
+                <ul className="space-y-1 max-h-48 overflow-y-auto text-sm">
+                  {reportData.departments.flatMap((dept) =>
+                    dept.sections.flatMap((section) =>
+                      section.items.map((item) => (
+                        <li key={item._id} className="flex items-center justify-between gap-2 py-1 border-b border-red-100">
+                          <span className="text-slate-700 truncate">{item.checklistItemId?.label || 'Item'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRow(item._id)}
+                            className="shrink-0 text-red-600 hover:underline text-xs font-medium"
+                          >
+                            Delete row
+                          </button>
+                        </li>
+                      ))
+                    )
+                  )}
+                </ul>
+              </div>
+            )}
 
             {/* A4 Printable Report - Template Format */}
             <div className="bg-white shadow-lg rounded-lg overflow-visible print-container">

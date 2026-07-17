@@ -228,8 +228,13 @@ exports.updateChecklistItem = async (req, res) => {
 exports.deleteChecklistItem = async (req, res) => {
   try {
     const { id } = req.params;
-    await ChecklistItem.findByIdAndDelete(id);
-    res.status(204).send();
+    const item = await ChecklistItem.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ message: 'Checklist item not found' });
+    res.json({ message: 'Checklist item removed from upcoming forms. Past submissions are unchanged.' });
   } catch (err) {
     console.error('deleteChecklistItem error', err);
     res.status(500).json({ message: 'Server error' });

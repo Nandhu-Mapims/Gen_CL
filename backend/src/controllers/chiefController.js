@@ -2,6 +2,7 @@ const AuditSubmission = require('../models/AuditSubmission');
 const Patient = require('../models/Patient');
 const Admission = require('../models/Admission');
 const Notification = require('../models/Notification');
+const { applySubmissionSnapshots, backfillMissingSnapshots } = require('../utils/submissionSnapshot');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NEW: Get audit sessions for this supervisor (grouped by submittedBy + date + dept + form)
@@ -93,6 +94,7 @@ exports.getSupervisorSessions = async (req, res) => {
     const sessions = Object.values(sessionsMap)
       .map((s) => ({
         ...s,
+        submissions: applySubmissionSnapshots(s.submissions),
         complianceRate: s.totalItems > 0
           ? Math.round(((s.yesCount + s.naCount) / s.totalItems) * 100)
           : 0,
@@ -135,7 +137,8 @@ exports.getSessionSubmissions = async (req, res) => {
       .sort({ 'checklistItemId.section': 1, 'checklistItemId.order': 1 })
       .lean();
 
-    res.json(submissions);
+    await backfillMissingSnapshots(submissions, AuditSubmission);
+    res.json(applySubmissionSnapshots(submissions));
   } catch (err) {
     console.error('getSessionSubmissions error', err);
     res.status(500).json({ message: 'Server error' });
@@ -457,13 +460,20 @@ exports.getChiefAnalytics = async (req, res) => {
 // Chief's own analytics (for Chief role) – summary, by department, trend
 exports.getMyAnalytics = async (req, res) => {
   try {
-    const { chiefName } = req.query;
-    if (!chiefName || !chiefName.trim()) {
-      return res.status(400).json({ message: 'Chief name is required' });
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    const name = chiefName.trim();
-    const submissions = await AuditSubmission.find({ unitChief: name })
+    const User = require('../models/User');
+    const currentUser = await User.findById(userId).select('name').lean();
+    const name = (currentUser?.name || req.query.chiefName || '').trim();
+
+    const accessFilter = name
+      ? { $or: [{ assignedToUserId: userId }, { unitChief: name }] }
+      : { assignedToUserId: userId };
+
+    const submissions = await AuditSubmission.find(accessFilter)
       .select('department responseValue yesNoNa corrective preventive submittedAt ipid uhid')
       .populate('department', 'name code')
       .lean();
@@ -561,16 +571,20 @@ exports.getMyAnalytics = async (req, res) => {
 // Get doctor performance analytics for this chief
 exports.getDoctorPerformance = async (req, res) => {
   try {
-    const { chiefName } = req.query;
-
-    if (!chiefName || !chiefName.trim()) {
-      return res.status(400).json({ message: 'Chief name is required' });
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    // Get all submissions for this chief
-    const submissions = await AuditSubmission.find({
-      unitChief: chiefName.trim(),
-    })
+    const User = require('../models/User');
+    const currentUser = await User.findById(userId).select('name').lean();
+    const name = (currentUser?.name || req.query.chiefName || '').trim();
+
+    const accessFilter = name
+      ? { $or: [{ assignedToUserId: userId }, { unitChief: name }] }
+      : { assignedToUserId: userId };
+
+    const submissions = await AuditSubmission.find(accessFilter)
       .populate('submittedBy', 'name email role')
       .populate('department', 'name code')
       .sort({ submittedAt: -1 });
@@ -653,7 +667,7 @@ exports.getDoctorPerformance = async (req, res) => {
     performanceData.sort((a, b) => b.totalSubmissions - a.totalSubmissions);
 
     res.json({
-      chiefName: chiefName.trim(),
+      chiefName: name || currentUser?.name || '',
       totalDoctors: performanceData.length,
       doctors: performanceData,
     });

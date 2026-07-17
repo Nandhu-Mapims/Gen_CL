@@ -37,17 +37,17 @@ export function ChiefAnalytics() {
 
   useEffect(() => {
     loadAnalytics()
-  }, [user?.name])
+  }, [user?.id, user?._id])
 
   const loadAnalytics = async () => {
-    if (!user?.name) {
+    if (!user?.id && !user?._id) {
       setLoading(false)
       return
     }
     setLoading(true)
     setError('')
     try {
-      const res = await apiClient.get(`/chief/my-analytics?chiefName=${encodeURIComponent(user.name)}`)
+      const res = await apiClient.get('/chief/my-analytics')
       setData(res)
     } catch (err) {
       console.error('Chief analytics load error', err)
@@ -100,7 +100,7 @@ export function ChiefAnalytics() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics</h1>
           <p className="mt-1 text-sm text-slate-500">Corrective & preventive actions – overview and trends</p>
           <p className="mt-1 text-xs text-maroon-600 bg-maroon-50 rounded px-2 py-1 inline-block">
-            These numbers are for audits where you were selected as Unit Supervisor.
+            These numbers are for audits assigned to you as supervisor.
           </p>
         </div>
         {data?.generatedAt && (
@@ -179,7 +179,7 @@ export function ChiefAnalytics() {
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm gap-1">
                 <span>No activity in the last 7 days</span>
-                <span className="text-xs">Data will appear when staff submit forms with you as Unit Supervisor.</span>
+                <span className="text-xs">Data will appear when staff submit forms assigned to you.</span>
               </div>
             )}
           </div>
@@ -216,7 +216,7 @@ export function ChiefAnalytics() {
             ) : (
               <div className="flex flex-col items-center justify-center text-slate-400 text-sm gap-1">
                 <span>No responses yet</span>
-                <span className="text-xs">Data will appear when staff submit with you as Unit Supervisor.</span>
+                <span className="text-xs">Data will appear when staff submit forms assigned to you.</span>
               </div>
             )}
           </div>
@@ -275,7 +275,7 @@ export function ChiefAnalytics() {
           ) : (
             <div className="py-12 text-center text-slate-500 text-sm">
               <p>No department data yet</p>
-              <p className="text-xs mt-1">Data will appear when staff submit forms with you as Unit Supervisor.</p>
+              <p className="text-xs mt-1">Data will appear when staff submit forms assigned to you.</p>
             </div>
           )}
         </div>
