@@ -341,7 +341,28 @@ exports.getChecklistForDepartment = async (req, res) => {
         }).sort({ section: 1, order: 1, createdAt: 1 });
       }
 
-      return res.json(items);
+      // One question per form — older saves created a copy per department; collapse those.
+      const seen = new Map();
+      const deduped = [];
+      const duplicateIds = [];
+      for (const item of items) {
+        const key = `${(item.section || '').trim().toLowerCase()}|${item.order ?? 0}|${(item.label || '').trim().toLowerCase()}`;
+        if (seen.has(key)) {
+          if (item._id) duplicateIds.push(item._id);
+          continue;
+        }
+        seen.set(key, true);
+        deduped.push(item);
+      }
+
+      if (duplicateIds.length > 0) {
+        ChecklistItem.updateMany(
+          { _id: { $in: duplicateIds } },
+          { $set: { isActive: false } }
+        ).catch((err) => console.warn('Failed to deactivate duplicate checklist items:', err));
+      }
+
+      return res.json(deduped);
     }
 
     // Otherwise, get items assigned to this department OR items from form templates assigned to this department

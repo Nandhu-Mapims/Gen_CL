@@ -363,145 +363,81 @@ export function SimpleFormBuilder() {
       console.log('Form template updated successfully')
       formTemplateId = editingFormId
 
-      // Get ALL existing items for this form template to delete them before recreating
-      let oldItems = []
-
-      if (form.isCommon) {
-        // For common forms, get items from any department (they should have ALL scope)
-        // Try to get items from the first available department, or use a generic query
-        try {
-          const allDepts = await apiClient.get('/departments')
-          if (allDepts && allDepts.length > 0) {
-            const firstDeptId = allDepts[0]._id
-            const deptItems = await apiClient.get(
-              `/checklists/department/${firstDeptId}?formTemplateId=${editingFormId}`
-            )
-            if (Array.isArray(deptItems)) {
-              oldItems = deptItems
-            }
-          }
-        } catch (err) {
-          console.warn(`Error loading old items for common form:`, err)
-        }
-      } else if (formDepts.length > 0) {
-        // For non-common forms, collect items from all assigned departments
-        const allOldItems = []
-        for (const deptId of formDepts) {
-          try {
-            const deptItems = await apiClient.get(
-              `/checklists/department/${deptId}?formTemplateId=${editingFormId}`
-            )
-            if (Array.isArray(deptItems)) {
-              allOldItems.push(...deptItems)
-            }
-          } catch (err) {
-            console.warn(`Error loading old items for department ${deptId}:`, err)
-          }
-        }
-        // Remove duplicates (same item might be in multiple departments, but we only need to delete once)
-        const uniqueItems = new Map()
-        allOldItems.forEach(item => {
-          if (!uniqueItems.has(item._id)) {
-            uniqueItems.set(item._id, item)
-          }
-        })
-        oldItems = Array.from(uniqueItems.values())
-      }
-
-      console.log(`Found ${oldItems.length} unique items to delete for form template ${editingFormId}`)
-
-      // Delete all old items
-      for (const item of oldItems) {
-        try {
-          const itemId = item._id || item.id
-          if (itemId) {
-            await apiClient.delete(`/checklists/${itemId}`)
-          }
-        } catch (err) {
-          const itemId = item._id || item.id
-          console.warn(`Error deleting item ${itemId}:`, err)
-        }
-      }
-
-      // Create all items (since we deleted all old ones, we recreate everything)
       if (formDepts.length === 0 && !form.isCommon) {
         alert('Warning: No departments assigned to this form. Items cannot be created. Please assign at least one department in the Forms management page.')
         return
       }
 
-      // If form is common, create items with ALL scope (no specific department)
-      if (form.isCommon) {
-        for (const section of sections) {
-          for (const item of section.items) {
-            // Ensure responseType is valid
-            const responseType = (item.responseType && ['YES_NO', 'MULTI_SELECT', 'TEXT'].includes(item.responseType))
-              ? item.responseType
-              : 'YES_NO'
+      // Load existing active items once (API dedupes and deactivates leftover department copies).
+      let oldItems = []
+      try {
+        let lookupDeptId = formDepts[0]
+        if (!lookupDeptId) {
+          const allDepts = await apiClient.get('/departments')
+          lookupDeptId = Array.isArray(allDepts) && allDepts[0] ? allDepts[0]._id : null
+        }
+        if (lookupDeptId) {
+          const deptItems = await apiClient.get(
+            `/checklists/department/${lookupDeptId}?formTemplateId=${editingFormId}`
+          )
+          if (Array.isArray(deptItems)) oldItems = deptItems
+        }
+      } catch (err) {
+        console.warn('Error loading existing checklist items:', err)
+      }
 
-            let payload = {
-              label: item.label,
-              section: section.name,
-              departmentScope: 'ALL',
-              departmentId: undefined,
-              formTemplateId: formTemplateId,
-              responseType: responseType,
-              isActive: true,
-              order: item.order || 0,
-              isMandatory: item.isMandatory || false,
-            }
-            // Only include responseOptions if responseType is MULTI_SELECT and options are provided
-            if (responseType === 'MULTI_SELECT' && item.responseOptions && item.responseOptions.trim()) {
-              payload.responseOptions = item.responseOptions.trim()
-            }
+      const keptIds = new Set()
+      const primaryDeptId = formDepts[0]
 
-            console.log(`Creating item "${item.label}" with responseType: ${responseType}`, { item, payload })
-            try {
-              await apiClient.post('/checklists', payload)
-            } catch (err) {
-              console.error(`Error creating item "${item.label}":`, err)
-              console.error('Payload sent:', payload)
-              console.error('Error response:', err.response?.data)
-              throw err // Re-throw to stop the process
-            }
+      for (const section of sections) {
+        for (const item of section.items) {
+          const responseType = (item.responseType && ['YES_NO', 'MULTI_SELECT', 'TEXT'].includes(item.responseType))
+            ? item.responseType
+            : 'YES_NO'
+
+          const payload = {
+            label: item.label,
+            section: section.name,
+            formTemplateId: formTemplateId,
+            responseType,
+            isActive: true,
+            order: item.order || 0,
+            isMandatory: item.isMandatory || false,
+          }
+
+          if (form.isCommon) {
+            payload.departmentScope = 'ALL'
+            payload.departmentId = undefined
+          } else {
+            payload.departmentScope = 'SINGLE'
+            payload.departmentId = primaryDeptId
+          }
+
+          if (responseType === 'MULTI_SELECT' && item.responseOptions && item.responseOptions.trim()) {
+            payload.responseOptions = item.responseOptions.trim()
+          }
+
+          const existingId = item.id || item._id
+          if (existingId && oldItems.some((x) => String(x._id || x.id) === String(existingId))) {
+            await apiClient.put(`/checklists/${existingId}`, payload)
+            keptIds.add(String(existingId))
+          } else {
+            const created = await apiClient.post('/checklists', payload)
+            const newId = created?._id || created?.id
+            if (newId) keptIds.add(String(newId))
           }
         }
-      } else {
-        // For non-common forms, create items for each assigned department
-        for (const deptId of formDepts) {
-          for (const section of sections) {
-            for (const item of section.items) {
-              // Ensure responseType is valid
-              const responseType = (item.responseType && ['YES_NO', 'MULTI_SELECT', 'TEXT'].includes(item.responseType))
-                ? item.responseType
-                : 'YES_NO'
+      }
 
-              let payload = {
-                label: item.label,
-                section: section.name,
-                departmentScope: 'SINGLE',
-                departmentId: deptId,
-                formTemplateId: formTemplateId,
-                responseType: responseType,
-                isActive: true,
-                order: item.order || 0,
-                isMandatory: item.isMandatory || false,
-              }
-              // Only include responseOptions if responseType is MULTI_SELECT and options are provided
-              if (responseType === 'MULTI_SELECT' && item.responseOptions && item.responseOptions.trim()) {
-                payload.responseOptions = item.responseOptions.trim()
-              }
-
-              console.log(`Creating item "${item.label}" for dept ${deptId} with responseType: ${responseType}`, { item, payload })
-              try {
-                await apiClient.post('/checklists', payload)
-              } catch (err) {
-                console.error(`Error creating item "${item.label}" for department ${deptId}:`, err)
-                console.error('Payload sent:', payload)
-                console.error('Error response:', err.response?.data)
-                throw err // Re-throw to stop the process
-              }
-            }
-          }
+      // Soft-delete rows no longer in the form (and any leftover department duplicates).
+      for (const old of oldItems) {
+        const id = old._id || old.id
+        if (!id) continue
+        if (keptIds.has(String(id))) continue
+        try {
+          await apiClient.delete(`/checklists/${id}`)
+        } catch (err) {
+          console.warn(`Error removing checklist item ${id}:`, err)
         }
       }
 
